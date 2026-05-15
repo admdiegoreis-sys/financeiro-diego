@@ -109,6 +109,24 @@ select {
   position: relative;
 }
 
+.nav-direct {
+  min-height: 36px;
+  width: auto;
+  display: flex;
+  grid-template-columns: none;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  padding: 0 13px 0 10px;
+  border-radius: 8px;
+}
+
+.nav-direct:hover,
+.nav-direct.active {
+  border-color: #cfdbd4;
+  background: #f4f8f6;
+  color: var(--text);
+}
+
 .nav-group summary {
   min-height: 36px;
   display: flex;
@@ -1593,6 +1611,10 @@ tr:hover td {
 
   .nav-group {
     position: static;
+    flex: 0 0 auto;
+  }
+
+  .nav-direct {
     flex: 0 0 auto;
   }
 

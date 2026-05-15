@@ -1,0 +1,12 @@
+{
+  "name": "financeiro-pessoal-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "netlify dev",
+    "check": "node --check app/app.js && node --check netlify/functions/state.js"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.38.1"
+  }
+}

@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.netlify/
+node_modules/
+__pycache__/
+deploy-extracted/
+deploy-netlify-static/
+deploy-netlify-upload/
+*.zip

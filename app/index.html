@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fluxo Pessoal</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">FP</div>
+          <div>
+            <strong>Fluxo Pessoal</strong>
+            <span>Gestão financeira</span>
+          </div>
+        </div>
+
+        <nav class="top-nav" aria-label="Menu superior">
+          <details class="nav-group">
+            <summary>Visão</summary>
+            <div class="nav-menu">
+              <button class="nav-item active" data-icon="▦" data-view="dashboard" type="button">Dashboard</button>
+              <button class="nav-item" data-icon="↕" data-view="cashflow" type="button">Fluxo de caixa</button>
+            </div>
+          </details>
+          <details class="nav-group">
+            <summary>Movimentos</summary>
+            <div class="nav-menu">
+              <button class="nav-item" data-icon="+" data-view="transactions" type="button">Lançamentos</button>
+              <button class="nav-item" data-icon="▣" data-view="cards" type="button">Cartão de crédito</button>
+              <button class="nav-item" data-icon="⇩" data-view="imports" type="button">Importação</button>
+            </div>
+          </details>
+          <details class="nav-group">
+            <summary>Investimentos</summary>
+            <div class="nav-menu">
+              <button class="nav-item" data-icon="◈" data-view="investmentDashboard" type="button">Dash Investimentos</button>
+              <button class="nav-item" data-icon="⇧" data-view="investments" type="button">Investimentos</button>
+              <button class="nav-item" data-icon="%" data-view="income" type="button">Proventos</button>
+            </div>
+          </details>
+          <details class="nav-group">
+            <summary>Cadastros</summary>
+            <div class="nav-menu">
+              <button class="nav-item" data-icon="◆" data-view="investmentAssets" type="button">Cad. Investimentos</button>
+              <button class="nav-item" data-icon="≡" data-view="categories" type="button">Categorias</button>
+              <button class="nav-item" data-icon="$" data-view="accounts" type="button">Contas</button>
+            </div>
+          </details>
+        </nav>
+
+        <nav class="nav legacy-nav" aria-label="Navegação principal">
+          <button class="nav-item active" data-icon="▦" data-view="dashboard" type="button">Dashboard</button>
+          <button class="nav-item" data-icon="↕" data-view="cashflow" type="button">Fluxo de caixa</button>
+          <button class="nav-item" data-icon="＋" data-view="transactions" type="button">Lançamentos</button>
+          <button class="nav-item" data-icon="▣" data-view="cards" type="button">Cartão de crédito</button>
+          <button class="nav-item" data-icon="◈" data-view="investmentDashboard" type="button">Dash Investimentos</button>
+          <button class="nav-item" data-icon="⇧" data-view="investments" type="button">Investimentos</button>
+          <button class="nav-item" data-icon="%" data-view="income" type="button">Proventos</button>
+          <button class="nav-item" data-icon="◆" data-view="investmentAssets" type="button">Cad. Investimentos</button>
+          <button class="nav-item" data-icon="≡" data-view="categories" type="button">Categorias</button>
+          <button class="nav-item" data-icon="$" data-view="accounts" type="button">Contas</button>
+          <button class="nav-item" data-icon="⇩" data-view="imports" type="button">Importação</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span>Base</span>
+          <strong>Financeiro consolidado</strong>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="pageTitle">Dashboard</h1>
+            <p id="pageSubtitle">Visão consolidada dos lançamentos importados.</p>
+          </div>
+          <div class="topbar-actions">
+            <select id="monthFilter" aria-label="Filtrar mês"></select>
+            <button id="resetFilters" class="secondary-button" type="button">Limpar filtros</button>
+          </div>
+        </header>
+
+        <section id="dashboard" class="view active-view">
+          <div class="dashboard-toolbar">
+            <select id="dashboardYearFilter" aria-label="Filtrar ano do dashboard"></select>
+            <div id="dashboardMonthFilter" class="month-chip-group" aria-label="Filtrar meses do dashboard"></div>
+          </div>
+
+          <div class="kpi-grid">
+            <article class="kpi">
+              <span>Entradas</span>
+              <strong id="kpiInflow">R$ 0</strong>
+            </article>
+            <article class="kpi">
+              <span>Saídas</span>
+              <strong id="kpiOutflow">R$ 0</strong>
+            </article>
+            <article class="kpi">
+              <span>Resultado</span>
+              <strong id="kpiNet">R$ 0</strong>
+            </article>
+            <article class="kpi">
+              <span>Lançamentos</span>
+              <strong id="kpiCount">0</strong>
+            </article>
+          </div>
+
+          <div class="summary-grid dashboard-summary">
+            <article class="summary-card">
+              <span>Receitas</span>
+              <strong id="revenueKpi">R$ 0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Gastos<br />Essenciais</span>
+              <em id="essentialFixedExpensePct" class="card-ratio">0%</em>
+              <strong id="essentialFixedExpenseKpi">R$ 0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Gastos<br />Não Essenciais</span>
+              <em id="nonEssentialFixedExpensePct" class="card-ratio">0%</em>
+              <strong id="nonEssentialFixedExpenseKpi">R$ 0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Gastos Temporários</span>
+              <em id="temporaryExpensePct" class="card-ratio">0%</em>
+              <strong id="temporaryExpenseKpi">R$ 0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Resultado Financiamento</span>
+              <em id="financialResultPct" class="card-ratio">0%</em>
+              <strong id="financialResultKpi">R$ 0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Resultado Investimento</span>
+              <em id="investmentResultPct" class="card-ratio">0%</em>
+              <strong id="investmentResultKpi">R$ 0</strong>
+            </article>
+            <article class="summary-card">
+              <span>Saldo</span>
+              <strong id="accountBalanceKpi">R$ 0</strong>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="panel wide-panel">
+              <div class="panel-header">
+                <h2>Cascata do saldo <small>(valores em R$ mil)</small></h2>
+                <span id="rangeLabel"></span>
+              </div>
+              <div id="monthlyChart" class="bar-chart"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Gastos ano a ano <small>(participação %)</small></h2>
+                <span id="yearExpenseRangeLabel"></span>
+              </div>
+              <div id="yearExpenseChart" class="year-expense-chart"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Saldos em contas</h2>
+              </div>
+              <div id="accountBalanceList" class="stack-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Categorias com maior volume</h2>
+              </div>
+              <div id="categoryVolumeList" class="stack-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Perfil de gastos</h2>
+              </div>
+              <div id="expenseMixList" class="stack-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Tendência</h2>
+                <span>Últimos 6 meses</span>
+              </div>
+              <div id="trendList" class="stack-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="cashflow" class="view">
+          <div class="panel">
+            <div class="panel-header split-header">
+              <div>
+                <h2>Fluxo de caixa por grupo</h2>
+                <span>Realizado por mês, consolidado a partir das abas de lançamentos.</span>
+              </div>
+              <div class="inline-filters">
+                <select id="cashflowYearFilter" aria-label="Filtrar ano do fluxo"></select>
+                <select id="cashflowMonthFilter" aria-label="Filtrar mês do fluxo"></select>
+                <select id="cashflowSourceFilter" aria-label="Filtrar origem do fluxo"></select>
+                <select id="macroFilter" aria-label="Filtrar macro tipo"></select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="cashflowTable"></table>
+            </div>
+          </div>
+        </section>
+
+        <section id="transactions" class="view">
+          <div class="panel">
+            <div class="panel-header split-header">
+              <div>
+                <h2>Lançamentos</h2>
+                <span id="transactionCountLabel"></span>
+              </div>
+              <div class="inline-filters">
+                <input id="searchInput" type="search" placeholder="Buscar descrição, conta ou categoria" />
+                <select id="accountFilter" aria-label="Filtrar conta"></select>
+                <select id="transactionTypeFilter" aria-label="Filtrar tipo"></select>
+                <select id="transactionStatusFilter" aria-label="Filtrar baixa"></select>
+                <select id="transactionSortFilter" aria-label="Ordenar lançamentos"></select>
+                <button id="newTransactionButton" class="primary-button" type="button">Novo lançamento</button>
+              </div>
+            </div>
+            <div class="summary-grid">
+              <article class="summary-card">
+                <span>Entradas</span>
+                <strong id="transactionInflow">R$ 0</strong>
+              </article>
+              <article class="summary-card">
+                <span>Saídas</span>
+                <strong id="transactionOutflow">R$ 0</strong>
+              </article>
+              <article class="summary-card">
+                <span>Saldo</span>
+                <strong id="transactionNet">R$ 0</strong>
+              </article>
+            </div>
+            <div class="table-wrap">
+              <table id="transactionsTable"></table>
+            </div>
+          </div>
+        </section>
+
+        <section id="cards" class="view">
+          <div class="panel">
+            <div class="panel-header split-header">
+              <div>
+                <h2>Cartão de crédito</h2>
+                <span id="cardCountLabel"></span>
+              </div>
+              <div class="inline-filters">
+                <input id="cardSearchInput" type="search" placeholder="Buscar descrição, conta ou categoria" />
+                <select id="cardAccountFilter" aria-label="Filtrar cartão"></select>
+                <select id="cardTypeFilter" aria-label="Filtrar tipo"></select>
+                <select id="cardStatusFilter" aria-label="Filtrar baixa"></select>
+                <select id="cardSortFilter" aria-label="Ordenar cartão"></select>
+                <button id="newCardTransactionButton" class="primary-button" type="button">Novo lançamento</button>
+              </div>
+            </div>
+            <div class="summary-grid">
+              <article class="summary-card">
+                <span>Entradas</span>
+                <strong id="cardInflow">R$ 0</strong>
+              </article>
+              <article class="summary-card">
+                <span>Saídas</span>
+                <strong id="cardOutflow">R$ 0</strong>
+              </article>
+              <article class="summary-card">
+                <span>Saldo</span>
+                <strong id="cardNet">R$ 0</strong>
+              </article>
+            </div>
+            <div class="table-wrap">
+              <table id="cardsTable"></table>
+            </div>
+          </div>
+        </section>
+
+        <section id="investmentDashboard" class="view">
+          <div class="dashboard-toolbar">
+            <select id="investmentDashboardYearFilter" aria-label="Filtrar ano dos investimentos"></select>
+            <select id="investmentDashboardTypeFilter" aria-label="Filtrar tipo de investimento"></select>
+            <select id="investmentDashboardTickerFilter" aria-label="Filtrar ticker"></select>
+          </div>
+
+          <div class="kpi-grid investment-kpi-grid">
+            <article class="kpi">
+              <span>Compras</span>
+              <strong id="investmentDashBuys">R$ 0</strong>
+            </article>
+            <article class="kpi">
+              <span>Vendas</span>
+              <strong id="investmentDashSells">R$ 0</strong>
+            </article>
+            <article class="kpi">
+              <span>Proventos</span>
+              <strong id="investmentDashIncome">R$ 0</strong>
+            </article>
+            <article class="kpi">
+              <span>Fluxo líquido</span>
+              <strong id="investmentDashNet">R$ 0</strong>
+            </article>
+            <article class="kpi">
+              <span>Aporte líquido</span>
+              <strong id="investmentDashPosition">R$ 0</strong>
+            </article>
+          </div>
+
+          <div class="dashboard-grid investment-dashboard-grid">
+            <section class="panel wide-panel">
+              <div class="panel-header">
+                <h2>Evolução mensal <small>(valores em R$ mil)</small></h2>
+                <span id="investmentDashRangeLabel"></span>
+              </div>
+              <div id="investmentMonthlyChart" class="investment-monthly-chart"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Aporte por tipo</h2>
+              </div>
+              <div id="investmentTypeList" class="stack-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Top tickers</h2>
+              </div>
+              <div id="investmentTickerList" class="stack-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Proventos por tipo</h2>
+              </div>
+              <div id="incomeTypeList" class="stack-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="investments" class="view">
+          <div class="panel">
+            <div class="panel-header split-header">
+              <div>
+                <h2>Investimentos</h2>
+                <span id="investmentTradeCountLabel"></span>
+              </div>
+              <div class="inline-filters">
+                <input id="investmentSearchInput" type="search" placeholder="Buscar ticker, ativo ou corretora" />
+                <select id="investmentTypeFilter" aria-label="Filtrar tipo de ativo"></select>
+                <button id="newInvestmentTradeButton" class="primary-button" type="button">Novo movimento</button>
+              </div>
+            </div>
+            <div class="table-wrap compact-wrap">
+              <table id="investmentsTable"></table>
+            </div>
+          </div>
+        </section>
+
+        <section id="income" class="view">
+          <div class="panel">
+            <div class="panel-header split-header">
+              <div>
+                <h2>Proventos e rendimentos</h2>
+                <span id="incomeCountLabel"></span>
+              </div>
+              <div class="inline-filters">
+                <input id="incomeSearchInput" type="search" placeholder="Buscar ticker, tipo ou conta" />
+                <select id="incomeTypeFilter" aria-label="Filtrar tipo de rendimento"></select>
+                <button id="newIncomeButton" class="primary-button" type="button">Novo provento</button>
+              </div>
+            </div>
+            <div class="table-wrap compact-wrap">
+              <table id="incomeTable"></table>
+            </div>
+          </div>
+        </section>
+
+        <section id="investmentAssets" class="view">
+          <div class="panel">
+            <div class="panel-header split-header">
+              <div>
+                <h2>Cadastro de investimentos</h2>
+                <span id="investmentAssetCountLabel"></span>
+              </div>
+              <div class="inline-filters">
+                <input id="investmentAssetSearchInput" type="search" placeholder="Buscar ticker, ativo ou tipo" />
+                <select id="investmentAssetTypeFilter" aria-label="Filtrar tipo"></select>
+                <button id="newInvestmentAssetButton" class="primary-button" type="button">Novo ticker</button>
+              </div>
+            </div>
+            <div class="table-wrap compact-wrap">
+              <table id="investmentAssetsTable"></table>
+            </div>
+          </div>
+        </section>
+
+        <section id="categories" class="view">
+          <div class="category-grid">
+            <div class="panel">
+              <div class="panel-header split-header">
+                <div>
+                  <h2>Estrutura de categorias</h2>
+                  <span id="categoryCountLabel"></span>
+                </div>
+                <div class="inline-filters category-filters">
+                  <input id="categorySearchInput" type="search" placeholder="Buscar categoria ou código" />
+                  <select id="categoryTypeFilter" aria-label="Filtrar tipo"></select>
+                  <select id="categoryLevel1Filter" aria-label="Filtrar nível 1"></select>
+                  <select id="categoryLevel2Filter" aria-label="Filtrar nível 2"></select>
+                  <button id="newCategoryButton" class="primary-button" type="button">Nova categoria</button>
+                </div>
+              </div>
+              <div class="table-wrap compact-wrap">
+                <table id="categoriesTable"></table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="accounts" class="view">
+          <div class="panel">
+            <div class="panel-header split-header">
+              <div>
+                <h2>Cadastro de contas</h2>
+                <span id="accountCountLabel"></span>
+              </div>
+              <div class="inline-filters">
+                <input id="accountSearchInput" type="search" placeholder="Buscar conta ou instituição" />
+                <select id="accountTypeFilter" aria-label="Filtrar tipo de conta"></select>
+                <button id="newAccountButton" class="primary-button" type="button">Nova conta</button>
+              </div>
+            </div>
+            <div class="table-wrap compact-wrap">
+              <table id="accountsTable"></table>
+            </div>
+          </div>
+        </section>
+
+        <section id="imports" class="view">
+          <div class="import-grid">
+            <article class="panel import-card">
+              <div class="panel-header">
+                <h2>Lançamentos e cartões</h2>
+                <span>Descrição, conta, categoria, valor, competência e pagamento.</span>
+              </div>
+              <div class="import-card-actions">
+                <select id="transactionImportKind" aria-label="Base de lançamentos">
+                  <option value="regular">Lançamentos</option>
+                  <option value="card">Cartão de crédito</option>
+                </select>
+                <button class="secondary-button compact-button" data-template-kind="transaction" type="button">Modelo XLS</button>
+                <button class="primary-button compact-button" data-import-kind="transaction" type="button">Importar Excel</button>
+              </div>
+            </article>
+
+            <article class="panel import-card">
+              <div class="panel-header">
+                <h2>Investimentos</h2>
+                <span>Compras, vendas, ticker, quantidade, preço e corretora.</span>
+              </div>
+              <div class="import-card-actions">
+                <button class="secondary-button compact-button" data-template-kind="investments" type="button">Modelo XLS</button>
+                <button class="primary-button compact-button" data-import-kind="investments" type="button">Importar Excel</button>
+              </div>
+            </article>
+
+            <article class="panel import-card">
+              <div class="panel-header">
+                <h2>Proventos</h2>
+                <span>Dividendos, JCP, rendimentos, amortizações e outros recebimentos.</span>
+              </div>
+              <div class="import-card-actions">
+                <button class="secondary-button compact-button" data-template-kind="income" type="button">Modelo XLS</button>
+                <button class="primary-button compact-button" data-import-kind="income" type="button">Importar Excel</button>
+              </div>
+            </article>
+
+            <input id="importExcelFile" type="file" accept=".xls,.html,.csv,.txt" hidden />
+
+            <article class="panel import-history-panel">
+              <div class="panel-header">
+                <h2>Histórico de importação</h2>
+              </div>
+              <div class="table-wrap compact-wrap">
+                <table id="importHistoryTable"></table>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <div id="categoryEditModal" class="modal-backdrop" hidden>
+          <div class="modal" role="dialog" aria-modal="true" aria-labelledby="categoryEditTitle">
+            <div class="modal-header">
+              <div>
+                <h2 id="categoryEditTitle">Categoria</h2>
+                <span>Ajuste a categoria e sua posição na hierarquia do fluxo.</span>
+              </div>
+              <button id="closeCategoryEditModal" class="icon-button" type="button" aria-label="Fechar">×</button>
+            </div>
+            <form id="categoryEditForm" class="form-grid modal-form">
+              <input id="editCategoryOriginalCode" type="hidden" />
+              <label>
+                <span>Código</span>
+                <input id="editCategoryCode" required type="number" min="1" />
+              </label>
+              <label>
+                <span>Categoria / natureza</span>
+                <input id="editCategoryName" required />
+              </label>
+              <label>
+                <span>Nível 1</span>
+                <select id="editCategoryLevel1" required></select>
+              </label>
+              <label>
+                <span>Nível 2</span>
+                <select id="editCategoryLevel2"></select>
+              </label>
+              <label>
+                <span>Nível 3</span>
+                <select id="editCategoryLevel3"></select>
+              </label>
+              <label>
+                <span>Nível 4</span>
+                <select id="editCategoryLevel4"></select>
+              </label>
+              <label>
+                <span>Tipo</span>
+                <select id="editCategoryMacro" required>
+                  <option value="receita">Receita</option>
+                  <option value="despesa">Despesa</option>
+                  <option value="financiamento">Financiamento</option>
+                  <option value="investimento">Investimento</option>
+                  <option value="transferencia">Transferência</option>
+                </select>
+              </label>
+              <div class="form-actions modal-actions">
+                <button id="saveCategoryModalButton" class="primary-button" type="submit">Salvar categoria</button>
+                <button id="cancelCategoryEditModal" class="secondary-button" type="button">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="transactionEditModal" class="modal-backdrop" hidden>
+          <div class="modal transaction-modal" role="dialog" aria-modal="true" aria-labelledby="transactionEditTitle">
+            <div class="modal-header">
+              <div>
+                <h2 id="transactionEditTitle">Lançamento</h2>
+                <span>Cadastre ou ajuste uma movimentação financeira.</span>
+              </div>
+              <button id="closeTransactionEditModal" class="icon-button" type="button" aria-label="Fechar">×</button>
+            </div>
+            <form id="transactionEditForm" class="form-grid modal-form">
+              <input id="editTransactionId" type="hidden" />
+              <input id="editTransactionKind" type="hidden" />
+              <label class="field-wide">
+                <span>Descrição</span>
+                <input id="editTxDescription" required placeholder="Ex.: Compra supermercado" />
+              </label>
+              <label>
+                <span>Tipo de conta</span>
+                <select id="editTxAccountType"></select>
+              </label>
+              <label>
+                <span>Conta</span>
+                <select id="editTxAccount"></select>
+              </label>
+              <label>
+                <span>Nível 1</span>
+                <select id="editTxLevel1"></select>
+              </label>
+              <label>
+                <span>Nível 2</span>
+                <select id="editTxLevel2"></select>
+              </label>
+              <label>
+                <span>Nível 3</span>
+                <select id="editTxLevel3"></select>
+              </label>
+              <label>
+                <span>Nível 4</span>
+                <select id="editTxLevel4"></select>
+              </label>
+              <label class="field-wide">
+                <span>Categoria / natureza</span>
+                <select id="editTxCategory" required></select>
+              </label>
+              <label>
+                <span>Valor</span>
+                <input id="editTxAmount" required type="number" step="0.01" placeholder="-150.00" />
+              </label>
+              <label>
+                <span>Competência</span>
+                <input id="editTxCompetenceDate" required type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+              </label>
+              <label>
+                <span>Pagamento</span>
+                <input id="editTxPaymentDate" type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+              </label>
+              <div class="form-actions modal-actions">
+                <button id="saveTransactionModalButton" class="primary-button" type="submit">Salvar lançamento</button>
+                <button id="cancelTransactionEditModal" class="secondary-button" type="button">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="accountEditModal" class="modal-backdrop" hidden>
+          <div class="modal" role="dialog" aria-modal="true" aria-labelledby="accountEditTitle">
+            <div class="modal-header">
+              <div>
+                <h2 id="accountEditTitle">Conta</h2>
+                <span>Cadastre uma conta para usar nos lançamentos e filtros.</span>
+              </div>
+              <button id="closeAccountEditModal" class="icon-button" type="button" aria-label="Fechar">×</button>
+            </div>
+            <form id="accountEditForm" class="form-grid modal-form">
+              <input id="editAccountOriginalName" type="hidden" />
+              <label>
+                <span>Nome da conta</span>
+                <input id="editAccountName" required placeholder="Ex.: Itaú - Conta Corrente" />
+              </label>
+              <label>
+                <span>Instituição</span>
+                <input id="editAccountInstitution" placeholder="Ex.: Itaú" />
+              </label>
+              <label>
+                <span>Tipo de conta</span>
+                <select id="editAccountType" required>
+                  <option value="corrente">Corrente</option>
+                  <option value="poupança">Poupança</option>
+                  <option value="investimento">Investimento</option>
+                  <option value="cartão de crédito">Cartão de crédito</option>
+                  <option value="dinheiro">Dinheiro</option>
+                </select>
+              </label>
+              <label>
+                <span>Saldo inicial</span>
+                <input id="editAccountOpeningBalance" required type="number" step="0.01" placeholder="0.00" />
+              </label>
+              <label>
+                <span>Data saldo inicial</span>
+                <input id="editAccountOpeningDate" required type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+              </label>
+              <label>
+                <span>Status</span>
+                <select id="editAccountActive" required>
+                  <option value="active">Ativa</option>
+                  <option value="inactive">Inativa</option>
+                </select>
+              </label>
+              <div class="form-actions modal-actions">
+                <button id="saveAccountModalButton" class="primary-button" type="submit">Salvar conta</button>
+                <button id="cancelAccountEditModal" class="secondary-button" type="button">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="investmentEditModal" class="modal-backdrop" hidden>
+          <div class="modal" role="dialog" aria-modal="true" aria-labelledby="investmentEditTitle">
+            <div class="modal-header">
+              <div>
+                <h2 id="investmentEditTitle">Movimento de investimento</h2>
+                <span>Registre compras e vendas por ticker.</span>
+              </div>
+              <button id="closeInvestmentEditModal" class="icon-button" type="button" aria-label="Fechar">×</button>
+            </div>
+            <form id="investmentEditForm" class="form-grid modal-form">
+              <input id="editInvestmentId" type="hidden" />
+              <label>
+                <span>Data</span>
+                <input id="editInvestmentDate" required type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+              </label>
+              <label>
+                <span>Operação</span>
+                <select id="editInvestmentOperation">
+                  <option value="compra">Compra</option>
+                  <option value="venda">Venda</option>
+                </select>
+              </label>
+              <label>
+                <span>Tipo</span>
+                <select id="editInvestmentAssetType"></select>
+              </label>
+              <label>
+                <span>Ticker</span>
+                <input id="editInvestmentTicker" required list="investmentTickerOptions" placeholder="Ex.: PETR4" />
+              </label>
+              <label class="field-wide">
+                <span>Ativo</span>
+                <input id="editInvestmentAssetName" placeholder="Ex.: Petrobras PN" />
+              </label>
+              <label>
+                <span>Quantidade</span>
+                <input id="editInvestmentQuantity" required type="number" step="0.000001" placeholder="100" />
+              </label>
+              <label>
+                <span>Preço unitário</span>
+                <input id="editInvestmentUnitPrice" required type="number" step="0.01" placeholder="28.50" />
+              </label>
+              <label>
+                <span>Taxas</span>
+                <input id="editInvestmentFees" type="number" step="0.01" placeholder="0.00" />
+              </label>
+              <label>
+                <span>Corretora</span>
+                <input id="editInvestmentBroker" placeholder="Ex.: BTG" />
+              </label>
+              <label class="field-wide">
+                <span>Observação</span>
+                <input id="editInvestmentNotes" placeholder="Opcional" />
+              </label>
+              <div class="form-actions modal-actions">
+                <button id="saveInvestmentModalButton" class="primary-button" type="submit">Salvar movimento</button>
+                <button id="cancelInvestmentEditModal" class="secondary-button" type="button">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="incomeEditModal" class="modal-backdrop" hidden>
+          <div class="modal" role="dialog" aria-modal="true" aria-labelledby="incomeEditTitle">
+            <div class="modal-header">
+              <div>
+                <h2 id="incomeEditTitle">Provento ou rendimento</h2>
+                <span>Registre dividendos, JCP, rendimentos e amortizações.</span>
+              </div>
+              <button id="closeIncomeEditModal" class="icon-button" type="button" aria-label="Fechar">×</button>
+            </div>
+            <form id="incomeEditForm" class="form-grid modal-form">
+              <input id="editIncomeId" type="hidden" />
+              <label>
+                <span>Data</span>
+                <input id="editIncomeDate" required type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+              </label>
+              <label>
+                <span>Tipo</span>
+                <select id="editIncomeType">
+                  <option value="dividendo">Dividendo</option>
+                  <option value="jcp">JCP</option>
+                  <option value="rendimento">Rendimento</option>
+                  <option value="amortização">Amortização</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </label>
+              <label>
+                <span>Ticker</span>
+                <input id="editIncomeTicker" required list="investmentTickerOptions" placeholder="Ex.: MXRF11" />
+              </label>
+              <label>
+                <span>Valor</span>
+                <input id="editIncomeAmount" required type="number" step="0.01" placeholder="120.00" />
+              </label>
+              <label>
+                <span>Quantidade base</span>
+                <input id="editIncomeQuantity" type="number" step="0.000001" placeholder="100" />
+              </label>
+              <label>
+                <span>Conta</span>
+                <input id="editIncomeAccount" placeholder="Ex.: BTG - Investimentos" />
+              </label>
+              <label class="field-wide">
+                <span>Observação</span>
+                <input id="editIncomeNotes" placeholder="Opcional" />
+              </label>
+              <div class="form-actions modal-actions">
+                <button id="saveIncomeModalButton" class="primary-button" type="submit">Salvar provento</button>
+                <button id="cancelIncomeEditModal" class="secondary-button" type="button">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <datalist id="investmentTickerOptions"></datalist>
+
+        <div id="investmentAssetEditModal" class="modal-backdrop" hidden>
+          <div class="modal" role="dialog" aria-modal="true" aria-labelledby="investmentAssetEditTitle">
+            <div class="modal-header">
+              <div>
+                <h2 id="investmentAssetEditTitle">Ticker</h2>
+                <span>Cadastre o tipo e os dados básicos do ativo.</span>
+              </div>
+              <button id="closeInvestmentAssetEditModal" class="icon-button" type="button" aria-label="Fechar">×</button>
+            </div>
+            <form id="investmentAssetEditForm" class="form-grid modal-form">
+              <input id="editInvestmentAssetOriginalTicker" type="hidden" />
+              <label>
+                <span>Ticker</span>
+                <input id="editInvestmentAssetTicker" required placeholder="Ex.: PETR4" />
+              </label>
+              <label>
+                <span>Tipo</span>
+                <input id="editInvestmentAssetTypeName" required list="investmentTypeOptions" placeholder="Ex.: ação" />
+              </label>
+              <label class="field-wide">
+                <span>Nome do ativo</span>
+                <input id="editInvestmentAssetNameField" placeholder="Ex.: Petrobras PN" />
+              </label>
+              <label>
+                <span>Moeda</span>
+                <input id="editInvestmentAssetCurrency" placeholder="BRL" />
+              </label>
+              <label>
+                <span>Corretora padrão</span>
+                <input id="editInvestmentAssetBroker" placeholder="Ex.: BTG" />
+              </label>
+              <label class="field-wide">
+                <span>Observação</span>
+                <input id="editInvestmentAssetNotes" placeholder="Opcional" />
+              </label>
+              <div class="form-actions modal-actions">
+                <button id="saveInvestmentAssetModalButton" class="primary-button" type="submit">Salvar ticker</button>
+                <button id="cancelInvestmentAssetEditModal" class="secondary-button" type="button">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <datalist id="investmentTypeOptions"></datalist>
+      </main>
+    </div>
+
+    <script src="./finance-data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

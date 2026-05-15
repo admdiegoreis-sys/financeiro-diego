@@ -7,4 +7,5 @@ __pycache__/
 deploy-extracted/
 deploy-netlify-static/
 deploy-netlify-upload/
+PUBLICAR_NETLIFY_FINANCEIRO_DIEGO/
 *.zip

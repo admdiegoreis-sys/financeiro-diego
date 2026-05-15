@@ -969,18 +969,19 @@ function renderDashboard() {
   const transactions = dashboardTransactions();
   const balanceCutoff = dashboardBalanceCutoffMonth(transactions);
   const balanceTransactions = dashboardBalanceTransactions(balanceCutoff);
-  const inflow = transactions.filter((tx) => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0);
-  const outflow = transactions.filter((tx) => tx.amount < 0).reduce((sum, tx) => sum + tx.amount, 0);
-  const net = inflow + outflow;
   const revenue = transactions.filter(isRevenue).reduce((sum, tx) => sum + tx.amount, 0);
   const essentialFixedExpense = transactions.filter((tx) => normalizedText(tx.level3) === "despesas fixas (essencial)").reduce((sum, tx) => sum + tx.amount, 0);
   const nonEssentialFixedExpense = transactions.filter((tx) => normalizedText(tx.level3) === "despesas fixas (nao essencial)").reduce((sum, tx) => sum + tx.amount, 0);
   const temporaryExpense = transactions.filter((tx) => normalizedText(tx.level3) === "despesas temporarias").reduce((sum, tx) => sum + tx.amount, 0);
   const financialResult = transactions.filter((tx) => normalizedText(tx.level1) === "(=) resultado financiamento").reduce((sum, tx) => sum + tx.amount, 0);
   const investmentResult = transactions.filter((tx) => normalizedText(tx.level1) === "(=) resultado investimento").reduce((sum, tx) => sum + tx.amount, 0);
+  const inflow = revenue;
+  const outflow = essentialFixedExpense + nonEssentialFixedExpense + temporaryExpense + financialResult + investmentResult;
+  const net = inflow + outflow;
   const accountBalance = accountBalances(transactions, balanceTransactions, balanceCutoff).reduce((sum, item) => sum + item.amount, 0);
 
   $("#kpiInflow").textContent = formatMoney(inflow);
+  $("#kpiInflow").className = moneyClass(inflow);
   $("#kpiOutflow").textContent = formatMoney(outflow);
   $("#kpiOutflow").className = moneyClass(outflow);
   $("#kpiNet").textContent = formatMoney(net);

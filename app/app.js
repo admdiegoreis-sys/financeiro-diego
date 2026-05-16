@@ -1244,6 +1244,7 @@ function accountBalances(periodTransactions, balanceTransactions = periodTransac
   const cutoffDate = `${cutoffMonth}-31`;
   state.data.accounts.forEach((account) => {
     if (state.account !== "all" && account.name !== state.account) return;
+    if (state.account === "all" && (account.active === false || normalizeAccountType(account.type) !== "corrente")) return;
     const openingBalance = !state.search && (account.openingDate || "2022-12-31") <= cutoffDate
       ? Number(account.openingBalance || 0)
       : 0;
@@ -1298,8 +1299,10 @@ function renderAccountBalances(periodTransactions, balanceTransactions = periodT
 }
 
 function renderCategoryVolume(transactions) {
+  const currentMonth = dashboardCurrentExpenseMonth(transactions);
+  const expenseRows = transactions.filter((tx) => tx.month === currentMonth && tx.amount < 0);
   const totals = new Map();
-  transactions.forEach((tx) => {
+  expenseRows.forEach((tx) => {
     const row = totals.get(tx.category) || { amount: 0, count: 0 };
     row.amount += tx.amount;
     row.count += 1;
@@ -1309,21 +1312,40 @@ function renderCategoryVolume(transactions) {
     .sort((a, b) => Math.abs(b[1].amount) - Math.abs(a[1].amount))
     .slice(0, 8);
   const max = Math.max(...rows.map(([, item]) => Math.abs(item.amount)), 1);
+  $("#categoryVolumeTitle").textContent = currentMonth
+    ? `Categorias com maior volume - ${cashflowMonthLabel(currentMonth)}`
+    : "Categorias com maior volume";
   $("#categoryVolumeList").innerHTML = rows
     .map(([name, item]) => listRow(name, `${formatMoney(item.amount)} · ${integer.format(item.count)} lanç.`, Math.abs(item.amount) / max))
-    .join("");
+    .join("") || `<p class="empty-state">Sem gastos no mês atual.</p>`;
 }
 
 function renderExpenseMix(transactions) {
+  const currentMonth = dashboardCurrentExpenseMonth(transactions);
+  const expenses = transactions.filter((tx) => tx.month === currentMonth && tx.amount < 0);
   const rows = [
-    ["Fixos", Math.abs(transactions.filter(isFixedExpense).reduce((sum, tx) => sum + tx.amount, 0))],
-    ["Variáveis", Math.abs(transactions.filter(isVariableExpense).reduce((sum, tx) => sum + tx.amount, 0))],
-    ["Cartão de crédito", Math.abs(transactions.filter(isCreditCardTransaction).reduce((sum, tx) => sum + Math.min(tx.amount, 0), 0))],
+    ["Fixos", Math.abs(expenses.filter(isFixedExpense).reduce((sum, tx) => sum + tx.amount, 0))],
+    ["Variáveis", Math.abs(expenses.filter(isVariableExpense).reduce((sum, tx) => sum + tx.amount, 0))],
+    ["Cartão de crédito", Math.abs(expenses.filter(isCreditCardTransaction).reduce((sum, tx) => sum + tx.amount, 0))],
   ];
   const max = Math.max(...rows.map(([, amount]) => amount), 1);
+  $("#expenseMixTitle").textContent = currentMonth ? `Perfil de gastos - ${cashflowMonthLabel(currentMonth)}` : "Perfil de gastos";
   $("#expenseMixList").innerHTML = rows
     .map(([name, amount]) => listRow(name, formatMoney(amount), amount / max))
     .join("");
+}
+
+function dashboardCurrentExpenseMonth(transactions) {
+  const current = new Date();
+  const currentMonth = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}`;
+  if (transactions.some((tx) => tx.month === currentMonth && tx.amount < 0)) return currentMonth;
+  return [...new Set(transactions.map((tx) => tx.month).filter((month) => isPaymentMonth(month) && txMonthHasExpense(transactions, month)))]
+    .sort()
+    .pop() || "";
+}
+
+function txMonthHasExpense(transactions, month) {
+  return transactions.some((tx) => tx.month === month && tx.amount < 0);
 }
 
 function dashboardTrendTransactions() {
@@ -1443,11 +1465,23 @@ function renderTrendList() {
   const months = [...new Set(transactions.map((tx) => tx.month).filter((month) => isPaymentMonth(month) && month >= "2023-01"))]
     .sort()
     .slice(-6);
-  const summaries = months.map((month) => [month, monthSummary(transactions, month)]);
-  const max = Math.max(...summaries.map(([, item]) => Math.abs(item.net)), 1);
+  const lastSix = new Set(months);
+  const byCategory = new Map();
+  transactions
+    .filter((tx) => lastSix.has(tx.month) && tx.amount < 0)
+    .forEach((tx) => {
+      const row = byCategory.get(tx.category) || { amount: 0, count: 0 };
+      row.amount += tx.amount;
+      row.count += 1;
+      byCategory.set(tx.category, row);
+    });
+  const summaries = [...byCategory.entries()]
+    .sort((a, b) => Math.abs(b[1].amount) - Math.abs(a[1].amount))
+    .slice(0, 6);
+  const max = Math.max(...summaries.map(([, item]) => Math.abs(item.amount)), 1);
   $("#trendList").innerHTML = summaries
-    .map(([month, item]) => listRow(cashflowMonthLabel(month), `${formatMoney(item.net)} · fixos ${formatMoney(item.fixed)}`, Math.abs(item.net) / max))
-    .join("");
+    .map(([category, item]) => listRow(category, `${formatMoney(item.amount)} · ${integer.format(item.count)} lanç.`, Math.abs(item.amount) / max))
+    .join("") || `<p class="empty-state">Sem gastos nos últimos 6 meses.</p>`;
 }
 
 function listRow(name, value, ratio) {

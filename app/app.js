@@ -767,11 +767,74 @@ function hydrateLocalData() {
     state.data.categories.push(normalized);
     existingCodes.add(Number(normalized.code));
   });
+  ensureSystemCategories();
   manualTransactions.forEach((tx) => {
     state.data.transactions = state.data.transactions.filter((item) => item.id !== tx.id);
     state.data.transactions.unshift(tx);
   });
   syncTransactionsWithCategories();
+}
+
+function ensureSystemCategories() {
+  const systemCategories = [
+    {
+      code: 9996,
+      name: "Caixa de Viagem",
+      level1: "(=) Transitórias",
+      level2: "",
+      level3: "",
+      level4: "Caixa de Viagem",
+      group: "Caixa de Viagem",
+      section: "(=) Transitórias",
+      level: "",
+      macro: "transferencia",
+      system: true,
+    },
+    {
+      code: 9997,
+      name: "Adiantamentos",
+      level1: "(=) Transitórias",
+      level2: "",
+      level3: "",
+      level4: "Adiantamentos",
+      group: "Adiantamentos",
+      section: "(=) Transitórias",
+      level: "",
+      macro: "transferencia",
+      system: true,
+    },
+    {
+      code: 9998,
+      name: "Pagamento Cartão",
+      level1: "(=) Transitórias",
+      level2: "",
+      level3: "",
+      level4: "Pagamento Cartão",
+      group: "Pagamento Cartão",
+      section: "(=) Transitórias",
+      level: "",
+      macro: "transferencia",
+      system: true,
+    },
+    {
+      code: 9999,
+      name: "Transferencia entre Contas",
+      level1: "(=) Transitórias",
+      level2: "",
+      level3: "",
+      level4: "Transferencia entre Contas",
+      group: "Transferencia entre Contas",
+      section: "(=) Transitórias",
+      level: "",
+      macro: "transferencia",
+      system: true,
+    },
+  ];
+  systemCategories.forEach((category) => {
+    state.data.categories = state.data.categories.filter((item) => Number(item.code) !== Number(category.code));
+    state.data.categories.push(normalizeCategory(category));
+  });
+  state.data.categories.sort((a, b) => a.code - b.code);
 }
 
 function buildInitialAccounts() {
@@ -941,7 +1004,7 @@ function syncTransactionsWithCategories() {
 }
 
 function inferMacroFromCode(code) {
-  if (code === 9999) return "transferencia";
+  if ([9996, 9997, 9998, 9999].includes(code)) return "transferencia";
   if (code >= 100 && code < 300) return "receita";
   if (code >= 300 && code < 1200) return "despesa";
   if (code >= 1200 && code < 1500) return "financiamento";
@@ -1449,7 +1512,7 @@ function renderCashflow() {
   }
   transactions.filter((tx) => months.includes(tx.month)).forEach(bumpHierarchy);
 
-  const level1Order = ["(=) Resultado Operacional", "(=) Resultado Financiamento", "(=) Resultado Investimento"];
+  const level1Order = ["(=) Resultado Operacional", "(=) Resultado Financiamento", "(=) Resultado Investimento", "(=) Transitórias"];
   const level2Order = ["(+) Receitas", "(-) Despesas"];
   const level3Order = [
     "Receitas Fixas",
@@ -1473,6 +1536,10 @@ function renderCashflow() {
     "Gastos com Imóvel",
     "Filhos/Presentes/Doações",
     "Outros Temporários",
+    "Caixa de Viagem",
+    "Adiantamentos",
+    "Pagamento Cartão",
+    "Transferencia entre Contas",
   ];
   const orderOf = (list, value) => {
     const index = list.indexOf(value);

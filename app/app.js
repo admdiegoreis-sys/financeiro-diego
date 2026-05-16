@@ -25,11 +25,13 @@ const state = {
   categoryLevel2: "all",
   accountSearch: "",
   accountType: "all",
+  accountStatus: "all",
   investmentDashboardYear: "all",
   investmentDashboardType: "all",
   investmentDashboardTicker: "all",
   investmentSearch: "",
   investmentType: "all",
+  investmentOperation: "all",
   investmentAssetSearch: "",
   investmentAssetType: "all",
   incomeSearch: "",
@@ -86,11 +88,17 @@ const currencyCents = new Intl.NumberFormat("pt-BR", {
 });
 
 const integer = new Intl.NumberFormat("pt-BR");
+const decimal2 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const quantityFormat = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 4 });
 
 const $ = (selector) => document.querySelector(selector);
 
 function formatMoney(value, withCents = false) {
   return (withCents ? currencyCents : currency).format(value || 0);
+}
+
+function formatQuantity(value) {
+  return quantityFormat.format(Number(value || 0));
 }
 
 function formatCompactMoney(value) {
@@ -385,11 +393,19 @@ function refreshAccountFilters() {
     label: type.charAt(0).toUpperCase() + type.slice(1),
   }));
   setOptions($("#accountTypeFilter"), types, state.accountType, "Todos os tipos");
+  setOptions($("#accountStatusFilter"), [
+    { value: "active", label: "Ativas" },
+    { value: "inactive", label: "Inativas" },
+  ], state.accountStatus, "Todos os status");
 }
 
 function refreshInvestmentFilters() {
   const types = investmentTypeOptions();
   setOptions($("#investmentTypeFilter"), types.map((type) => ({ value: type, label: titleCase(type) })), state.investmentType, "Todos os tipos");
+  setOptions($("#investmentOperationFilter"), [
+    { value: "compra", label: "Compra" },
+    { value: "venda", label: "Venda" },
+  ], state.investmentOperation, "Todas as operações");
   setOptions($("#investmentAssetTypeFilter"), types.map((type) => ({ value: type, label: titleCase(type) })), state.investmentAssetType, "Todos os tipos");
   setOptions($("#incomeTypeFilter"), incomeTypes.map((type) => ({ value: type, label: titleCase(type) })), state.incomeType, "Todos os tipos");
   setOptions($("#editInvestmentAssetType"), types.map((type) => ({ value: type, label: titleCase(type) })), $("#editInvestmentAssetType")?.value || "ação");
@@ -1690,6 +1706,7 @@ function transactionTableHtml(transactions) {
         <th title="Pagamento">Pagto.</th>
         <th>Descrição</th>
         <th>Conta</th>
+        <th>Tipo conta</th>
         <th>Origem</th>
         <th>Categoria</th>
         <th>Cód.</th>
@@ -1708,18 +1725,20 @@ function transactionTableHtml(transactions) {
               <td class="tx-description">${escapeHtml(tx.description)}</td>
               <td class="tx-account">${escapeHtml(tx.account)}</td>
               <td class="tx-kind"><span class="pill neutral">${escapeHtml(transactionKindLabel(tx))}</span></td>
+              <td class="tx-source"><span class="pill neutral">${escapeHtml(transactionSourceLabel(tx))}</span></td>
               <td class="tx-category">${escapeHtml(tx.category)}</td>
               <td class="number tx-code">${tx.code}</td>
               <td class="tx-type"><span class="pill ${tx.macro}">${escapeHtml(tx.macro)}</span></td>
               ${amountCell(tx.amount, true)}
               <td class="action-cell">
                 <button class="table-action" data-action="edit-transaction" data-id="${escapeHtml(tx.id)}" type="button">Editar</button>
+                <button class="table-action" data-action="duplicate-transaction" data-id="${escapeHtml(tx.id)}" type="button">Duplicar</button>
                 <button class="table-action danger" data-action="delete-transaction" data-id="${escapeHtml(tx.id)}" type="button">Excluir</button>
               </td>
             </tr>
           `,
         )
-        .join("") : `<tr><td colspan="10">Nenhum lançamento encontrado.</td></tr>`}
+        .join("") : `<tr><td colspan="11">Nenhum lançamento encontrado.</td></tr>`}
     </tbody>
   `;
 }
@@ -1727,6 +1746,12 @@ function transactionTableHtml(transactions) {
 function transactionKindLabel(tx) {
   if (isCreditCardTransaction(tx)) return "Cartão";
   return normalizeAccountType(tx.accountType || tx.account) === "investimento" ? "Investimento" : "Conta";
+}
+
+function transactionSourceLabel(tx) {
+  const source = normalizedText(`${tx.sheet || ""} ${tx.status || ""}`);
+  if (source.includes("manual")) return "Lançamento manual";
+  return "Importação";
 }
 
 function paymentDateCell(tx) {
@@ -1827,6 +1852,8 @@ function renderAccounts() {
   const rows = state.data.accounts
     .filter((account) => {
       if (state.accountType !== "all" && account.type !== state.accountType) return false;
+      if (state.accountStatus === "active" && account.active === false) return false;
+      if (state.accountStatus === "inactive" && account.active !== false) return false;
       if (!state.accountSearch) return true;
       const haystack = `${account.name} ${account.institution} ${account.type} ${account.active === false ? "inativa" : "ativa"}`.toLowerCase();
       return haystack.includes(state.accountSearch.toLowerCase());
@@ -1870,12 +1897,14 @@ function renderInvestments() {
   const rows = [...(state.data.investments || [])]
     .filter((item) => {
       if (state.investmentType !== "all" && item.assetType !== state.investmentType) return false;
+      if (state.investmentOperation !== "all" && item.operation !== state.investmentOperation) return false;
       if (!state.investmentSearch) return true;
       const haystack = `${item.ticker} ${item.assetName} ${item.broker} ${item.operation}`.toLowerCase();
       return haystack.includes(state.investmentSearch.toLowerCase());
     })
     .sort((a, b) => String(b.date).localeCompare(String(a.date)));
   $("#investmentTradeCountLabel").textContent = `${integer.format(rows.length)} movimentos`;
+  renderInvestmentListSummary(rows);
   $("#investmentsTable").innerHTML = `
     <thead>
       <tr>
@@ -1898,6 +1927,21 @@ function renderInvestments() {
   `;
 }
 
+function renderInvestmentListSummary(rows) {
+  const buys = rows.filter((item) => item.operation !== "venda").reduce((sum, item) => sum + investmentTradeAmount(item), 0);
+  const sells = rows.filter((item) => item.operation === "venda").reduce((sum, item) => sum + investmentTradeAmount(item), 0);
+  const quantity = rows.reduce((sum, item) => sum + (item.operation === "venda" ? -Number(item.quantity || 0) : Number(item.quantity || 0)), 0);
+  const balance = buys - sells;
+  const avgPrice = quantity > 0 ? balance / quantity : 0;
+  $("#investmentListBalance").textContent = formatMoney(balance, true);
+  $("#investmentListBalance").className = moneyClass(balance);
+  $("#investmentListBuys").textContent = formatMoney(-buys, true);
+  $("#investmentListBuys").className = "negative";
+  $("#investmentListSells").textContent = formatMoney(sells, true);
+  $("#investmentListSells").className = moneyClass(sells);
+  $("#investmentListAvgPrice").textContent = currencyCents.format(avgPrice);
+}
+
 function investmentRow(item) {
   const gross = Number(item.quantity || 0) * Number(item.unitPrice || 0);
   const total = item.operation === "venda" ? gross - Number(item.fees || 0) : gross + Number(item.fees || 0);
@@ -1908,7 +1952,7 @@ function investmentRow(item) {
       <td>${escapeHtml(titleCase(item.assetType))}</td>
       <td><strong>${escapeHtml(item.ticker)}</strong></td>
       <td>${escapeHtml(item.assetName || "-")}</td>
-      <td class="number">${integer.format(item.quantity || 0)}</td>
+      <td class="number">${formatQuantity(item.quantity || 0)}</td>
       ${amountCell(item.unitPrice || 0, true)}
       ${amountCell(item.fees || 0, true)}
       ${amountCell(total, true)}
@@ -1998,7 +2042,7 @@ function incomeRow(item) {
       <td><span class="pill receita">${escapeHtml(titleCase(item.type))}</span></td>
       <td><strong>${escapeHtml(item.ticker)}</strong></td>
       ${amountCell(item.amount || 0, true)}
-      <td class="number">${item.quantity ? integer.format(item.quantity) : "-"}</td>
+      <td class="number">${item.quantity ? formatQuantity(item.quantity) : "-"}</td>
       <td>${escapeHtml(item.account || "-")}</td>
       <td>${escapeHtml(item.notes || "-")}</td>
       <td class="action-cell">
@@ -2192,6 +2236,7 @@ function render() {
 function bindEvents() {
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.addEventListener("click", () => {
+      if (state.activeView !== button.dataset.view) resetViewFilters(state.activeView);
       state.activeView = button.dataset.view;
       document.querySelectorAll(".top-nav .nav-group").forEach((group) => {
         group.open = false;
@@ -2317,6 +2362,11 @@ function bindEvents() {
     renderInvestments();
   });
 
+  $("#investmentOperationFilter").addEventListener("change", (event) => {
+    state.investmentOperation = event.target.value;
+    renderInvestments();
+  });
+
   $("#incomeTypeFilter").addEventListener("change", (event) => {
     state.incomeType = event.target.value;
     renderIncome();
@@ -2359,6 +2409,7 @@ function bindEvents() {
     state.search = "";
     state.transactionType = "all";
     state.transactionStatus = "all";
+    state.accountStatus = "all";
     state.cardAccount = "all";
     state.cardSearch = "";
     state.cardType = "all";
@@ -2370,6 +2421,7 @@ function bindEvents() {
     state.investmentDashboardTicker = "all";
     state.investmentSearch = "";
     state.investmentType = "all";
+    state.investmentOperation = "all";
     state.investmentAssetSearch = "";
     state.investmentAssetType = "all";
     state.incomeSearch = "";
@@ -2504,6 +2556,7 @@ function bindEvents() {
     const button = event.target.closest("[data-action]");
     if (!button) return;
     if (button.dataset.action === "edit-transaction") editTransaction(button.dataset.id);
+    if (button.dataset.action === "duplicate-transaction") duplicateTransaction(button.dataset.id);
     if (button.dataset.action === "delete-transaction") deleteTransaction(button.dataset.id);
   });
 
@@ -2511,6 +2564,7 @@ function bindEvents() {
     const button = event.target.closest("[data-action]");
     if (!button) return;
     if (button.dataset.action === "edit-transaction") editTransaction(button.dataset.id);
+    if (button.dataset.action === "duplicate-transaction") duplicateTransaction(button.dataset.id);
     if (button.dataset.action === "delete-transaction") deleteTransaction(button.dataset.id);
   });
 
@@ -2553,6 +2607,11 @@ function bindEvents() {
     renderAccounts();
   });
 
+  $("#accountStatusFilter").addEventListener("change", (event) => {
+    state.accountStatus = event.target.value;
+    renderAccounts();
+  });
+
   $("#categoriesTable").addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
@@ -2582,6 +2641,65 @@ function bindEvents() {
     state.categoryLevel2 = event.target.value;
     renderCategories();
   });
+}
+
+function resetViewFilters(view) {
+  if (view === "dashboard") {
+    state.dashboardYear = defaultDashboardYear();
+    state.dashboardMonths = [];
+  }
+  if (view === "cashflow") {
+    state.month = "all";
+    state.macro = "all";
+    state.cashflowYear = "all";
+    state.cashflowMonth = "all";
+    state.cashflowSource = "all";
+  }
+  if (view === "transactions") {
+    state.account = "all";
+    state.search = "";
+    state.transactionType = "all";
+    state.transactionStatus = "all";
+    state.transactionSort = "date_desc";
+    $("#searchInput").value = "";
+  }
+  if (view === "cards") {
+    state.cardAccount = "all";
+    state.cardSearch = "";
+    state.cardType = "all";
+    state.cardStatus = "all";
+    state.cardSort = "date_desc";
+    $("#cardSearchInput").value = "";
+  }
+  if (view === "investments") {
+    state.investmentSearch = "";
+    state.investmentType = "all";
+    state.investmentOperation = "all";
+    $("#investmentSearchInput").value = "";
+  }
+  if (view === "investmentAssets") {
+    state.investmentAssetSearch = "";
+    state.investmentAssetType = "all";
+    $("#investmentAssetSearchInput").value = "";
+  }
+  if (view === "income") {
+    state.incomeSearch = "";
+    state.incomeType = "all";
+    $("#incomeSearchInput").value = "";
+  }
+  if (view === "accounts") {
+    state.accountSearch = "";
+    state.accountType = "all";
+    state.accountStatus = "all";
+    $("#accountSearchInput").value = "";
+  }
+  if (view === "categories") {
+    state.categorySearch = "";
+    state.categoryType = "all";
+    state.categoryLevel1 = "all";
+    state.categoryLevel2 = "all";
+    $("#categorySearchInput").value = "";
+  }
 }
 
 function editCategory(code) {
@@ -2737,6 +2855,15 @@ function editTransaction(id) {
   $("#transactionEditModal").hidden = false;
 }
 
+function duplicateTransaction(id) {
+  const tx = state.data.transactions.find((item) => item.id === id);
+  if (!tx) return;
+  editTransaction(id);
+  $("#editTransactionId").value = "";
+  $("#transactionEditTitle").textContent = isCreditCardTransaction(tx) ? "Duplicar lançamento de cartão" : "Duplicar lançamento";
+  $("#saveTransactionModalButton").textContent = "Salvar cópia";
+}
+
 function closeTransactionEditModal() {
   $("#transactionEditModal").hidden = true;
   $("#transactionEditForm").reset();
@@ -2806,15 +2933,12 @@ function handleTransactionImportFile(event) {
   const input = event.target;
   const file = input.files?.[0];
   if (!file) return;
-  if (/\.xlsx$/i.test(file.name)) {
-    alert("Use o modelo XLS baixado pelo app. Arquivos .xlsx binários não são lidos nesta versão estática.");
-    input.value = "";
-    return;
-  }
   const reader = new FileReader();
   reader.onload = () => {
     try {
-      const rows = parseImportTable(String(reader.result || ""));
+      const rows = /\.xlsx$/i.test(file.name)
+        ? parseXlsxWorkbook(reader.result)
+        : parseImportTable(String(reader.result || ""));
       const imported = importRowsByKind(rows, kind);
       registerImportHistory(kind, file.name, imported);
       alert(`${imported} registro(s) importado(s).`);
@@ -2826,7 +2950,8 @@ function handleTransactionImportFile(event) {
       input.value = "";
     }
   };
-  reader.readAsText(file, "UTF-8");
+  if (/\.xlsx$/i.test(file.name)) reader.readAsArrayBuffer(file);
+  else reader.readAsText(file, "UTF-8");
 }
 
 function importRowsByKind(rows, kind) {
@@ -2847,6 +2972,16 @@ function parseImportTable(text) {
   const htmlRows = parseHtmlTable(text);
   if (htmlRows.length) return htmlRows;
   return parseDelimitedTable(text);
+}
+
+function parseXlsxWorkbook(buffer) {
+  if (!window.XLSX) throw new Error("A biblioteca de leitura XLSX não carregou. Recarregue a página e tente novamente.");
+  const workbook = window.XLSX.read(buffer, { type: "array" });
+  const firstSheet = workbook.SheetNames[0];
+  if (!firstSheet) return [];
+  return window.XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { header: 1, raw: false, defval: "" })
+    .map((row) => row.map((cell) => String(cell || "").trim()))
+    .filter((row) => row.some(Boolean));
 }
 
 function parseHtmlTable(text) {
@@ -2898,6 +3033,10 @@ function importTransactionRows(rows, kind) {
 
     if (!description || !account || !category || !Number.isFinite(amount) || !amount || !competenceDate) {
       errors.push(`Linha ${line}: revise descrição, conta, código, valor e competência.`);
+      return;
+    }
+    if (account.active === false) {
+      errors.push(`Linha ${line}: a conta informada está inativa no cadastro.`);
       return;
     }
     if (kind === "card" && !isCard) {
@@ -3095,10 +3234,26 @@ function saveEditedTransaction() {
   const deleted = new Set(readStorage(storageKeys.deletedTransactions));
   deleted.delete(tx.id);
   writeStorage(storageKeys.deletedTransactions, [...deleted]);
-  state.data.transactions = state.data.transactions.filter((item) => item.id !== tx.id);
-  state.data.transactions.unshift(tx);
+    state.data.transactions = state.data.transactions.filter((item) => item.id !== tx.id);
+    state.data.transactions.unshift(tx);
+    const duplicates = findSimilarTransactions(tx, tx.id);
+    if (duplicates.length) {
+      alert(`Atenção: encontrei ${duplicates.length} possível(is) lançamento(s) duplicado(s) com mesma data, valor, conta e categoria.`);
+    }
   closeTransactionEditModal();
   render();
+}
+
+function findSimilarTransactions(tx, ignoreId = "") {
+  const key = duplicateTransactionKey(tx);
+  if (!key) return [];
+  return state.data.transactions.filter((item) => item.id !== ignoreId && duplicateTransactionKey(item) === key);
+}
+
+function duplicateTransactionKey(tx) {
+  const date = tx.paymentDate || tx.competenceDate || "";
+  if (!date || !tx.account || !tx.code || !Number.isFinite(Number(tx.amount))) return "";
+  return [date, tx.account, Number(tx.code), Math.round(Number(tx.amount) * 100)].join("|");
 }
 
 function deleteTransaction(id) {

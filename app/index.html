@@ -351,8 +351,27 @@
               <div class="inline-filters">
                 <input id="investmentSearchInput" type="search" placeholder="Buscar ticker, ativo ou corretora" />
                 <select id="investmentTypeFilter" aria-label="Filtrar tipo de ativo"></select>
+                <select id="investmentOperationFilter" aria-label="Filtrar operação"></select>
                 <button id="newInvestmentTradeButton" class="primary-button" type="button">Novo movimento</button>
               </div>
+            </div>
+            <div class="summary-grid investment-list-summary">
+              <article class="summary-card">
+                <span>Saldo</span>
+                <strong id="investmentListBalance">R$ 0</strong>
+              </article>
+              <article class="summary-card">
+                <span>Compras</span>
+                <strong id="investmentListBuys">R$ 0</strong>
+              </article>
+              <article class="summary-card">
+                <span>Vendas</span>
+                <strong id="investmentListSells">R$ 0</strong>
+              </article>
+              <article class="summary-card">
+                <span>Preço médio</span>
+                <strong id="investmentListAvgPrice">R$ 0,00</strong>
+              </article>
             </div>
             <div class="table-wrap compact-wrap">
               <table id="investmentsTable"></table>
@@ -431,6 +450,7 @@
               <div class="inline-filters">
                 <input id="accountSearchInput" type="search" placeholder="Buscar conta ou instituição" />
                 <select id="accountTypeFilter" aria-label="Filtrar tipo de conta"></select>
+                <select id="accountStatusFilter" aria-label="Filtrar status da conta"></select>
                 <button id="newAccountButton" class="primary-button" type="button">Nova conta</button>
               </div>
             </div>
@@ -823,6 +843,7 @@
       </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./finance-data.js"></script>
     <script src="./app.js"></script>
   </body>

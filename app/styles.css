@@ -410,6 +410,10 @@ input:focus {
   align-self: start;
 }
 
+.summary-card:has(.card-ratio) span {
+  padding-right: 54px;
+}
+
 .summary-card strong {
   display: block;
   font-size: 1rem;
@@ -441,6 +445,11 @@ input:focus {
 
 .investment-kpi-grid {
   grid-template-columns: repeat(5, minmax(150px, 1fr));
+}
+
+.investment-list-summary {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  margin-bottom: 14px;
 }
 
 .dashboard-toolbar {

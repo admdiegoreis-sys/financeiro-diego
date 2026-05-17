@@ -1131,7 +1131,8 @@ table {
 
 #transactionsTable,
 #cardsTable {
-  min-width: 1380px;
+  width: 100%;
+  min-width: 1120px;
   table-layout: fixed;
 }
 
@@ -1153,7 +1154,7 @@ td {
 #transactionsTable td,
 #cardsTable th,
 #cardsTable td {
-  padding: 8px 9px;
+  padding: 8px 7px;
   font-size: 0.78rem;
   line-height: 1.18;
 }
@@ -1164,66 +1165,67 @@ td {
 #cardsTable th:nth-child(2),
 #transactionsTable .tx-date,
 #cardsTable .tx-date {
-  width: 82px;
+  width: 74px;
   white-space: nowrap;
 }
 
 #transactionsTable th:nth-child(3),
 #cardsTable th:nth-child(3) {
-  width: 20%;
+  width: 21%;
 }
 
 #transactionsTable th:nth-child(4),
 #cardsTable th:nth-child(4) {
-  width: 12%;
+  width: 11%;
 }
 
 #transactionsTable th:nth-child(5),
 #cardsTable th:nth-child(5) {
-  width: 86px;
+  width: 74px;
 }
 
 #transactionsTable th:nth-child(6),
 #cardsTable th:nth-child(6) {
-  width: 132px;
+  width: 112px;
 }
 
 #transactionsTable th:nth-child(7),
 #cardsTable th:nth-child(7) {
-  width: 19%;
+  width: 17%;
 }
 
 #transactionsTable th:nth-child(8),
 #cardsTable th:nth-child(8),
 #transactionsTable .tx-code,
 #cardsTable .tx-code {
-  width: 58px;
+  width: 52px;
 }
 
 #transactionsTable th:nth-child(9),
 #cardsTable th:nth-child(9),
 #transactionsTable .tx-type,
 #cardsTable .tx-type {
-  width: 96px;
+  width: 82px;
 }
 
 #transactionsTable th:nth-child(10),
 #cardsTable th:nth-child(10) {
-  width: 104px;
+  width: 92px;
 }
 
 #transactionsTable th:nth-child(11),
 #cardsTable th:nth-child(11),
 #transactionsTable .action-cell,
 #cardsTable .action-cell {
-  width: 116px;
+  width: 92px;
 }
 
 #transactionsTable .action-cell,
 #cardsTable .action-cell {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 4px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
 }
 
 #transactionsTable .tx-description,
@@ -1276,10 +1278,10 @@ td {
 
 #transactionsTable .table-action.icon-only,
 #cardsTable .table-action.icon-only {
-  width: 30px;
-  min-width: 30px;
+  width: 26px;
+  min-width: 26px;
   padding: 0;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   line-height: 1;
 }
 

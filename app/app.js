@@ -1777,7 +1777,7 @@ function transactionTableHtml(transactions) {
               <td class="tx-description">${escapeHtml(tx.description)}</td>
               <td class="tx-account">${escapeHtml(tx.account)}</td>
               <td class="tx-kind"><span class="pill neutral">${escapeHtml(transactionKindLabel(tx))}</span></td>
-              <td class="tx-source"><span class="pill neutral">${escapeHtml(transactionSourceLabel(tx))}</span></td>
+              <td class="tx-source">${escapeHtml(transactionSourceLabel(tx))}</td>
               <td class="tx-category">${escapeHtml(tx.category)}</td>
               <td class="number tx-code">${tx.code}</td>
               <td class="tx-type"><span class="pill ${tx.macro}">${escapeHtml(tx.macro)}</span></td>

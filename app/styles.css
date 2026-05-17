@@ -1131,7 +1131,7 @@ table {
 
 #transactionsTable,
 #cardsTable {
-  min-width: 1260px;
+  min-width: 1380px;
   table-layout: fixed;
 }
 
@@ -1170,12 +1170,12 @@ td {
 
 #transactionsTable th:nth-child(3),
 #cardsTable th:nth-child(3) {
-  width: 19%;
+  width: 20%;
 }
 
 #transactionsTable th:nth-child(4),
 #cardsTable th:nth-child(4) {
-  width: 13%;
+  width: 12%;
 }
 
 #transactionsTable th:nth-child(5),
@@ -1185,12 +1185,12 @@ td {
 
 #transactionsTable th:nth-child(6),
 #cardsTable th:nth-child(6) {
-  width: 104px;
+  width: 132px;
 }
 
 #transactionsTable th:nth-child(7),
 #cardsTable th:nth-child(7) {
-  width: 16%;
+  width: 19%;
 }
 
 #transactionsTable th:nth-child(8),
@@ -1228,11 +1228,21 @@ td {
 
 #transactionsTable .tx-description,
 #transactionsTable .tx-account,
+#transactionsTable .tx-source,
 #transactionsTable .tx-category,
 #cardsTable .tx-description,
 #cardsTable .tx-account,
+#cardsTable .tx-source,
 #cardsTable .tx-category {
   overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+#transactionsTable .tx-source,
+#cardsTable .tx-source {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.2;
 }
 
 .pill.neutral {

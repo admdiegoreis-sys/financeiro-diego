@@ -3006,7 +3006,7 @@ function handleTransactionImportFile(event) {
       input.value = "";
     }
   };
-  if (/\.xlsx$/i.test(file.name)) reader.readAsArrayBuffer(file);
+  if (/\.(xlsx|xls)$/i.test(file.name)) reader.readAsArrayBuffer(file);
   else reader.readAsText(file, "UTF-8");
 }
 
@@ -3055,32 +3055,80 @@ function parseDelimitedTable(text) {
   return lines.map((line) => line.split(delimiter).map((cell) => cell.trim().replace(/^"|"$/g, "")));
 }
 
+function detectImportLayout(rows, spec, requiredKeys, label) {
+  const limit = Math.min(rows.length, 20);
+  let best = null;
+  for (let rowIndex = 0; rowIndex < limit; rowIndex += 1) {
+    const headers = rows[rowIndex].map(normalizedText);
+    const columns = Object.fromEntries(Object.entries(spec).map(([key, names]) => [
+      key,
+      findImportColumn(headers, names),
+    ]));
+    const score = requiredKeys.filter((key) => columns[key] >= 0).length;
+    if (!best || score > best.score) best = { score, rowIndex, columns };
+    if (score === requiredKeys.length) break;
+  }
+  const missing = requiredKeys.filter((key) => !best || best.columns[key] < 0);
+  if (missing.length) {
+    const names = Object.fromEntries(Object.keys(spec).map((key) => [key, spec[key][0]]));
+    throw new Error(`Layout inválido para ${label}. Colunas não encontradas: ${missing.map((key) => names[key]).join(", ")}.`);
+  }
+  return {
+    columns: best.columns,
+    dataRows: rows.slice(best.rowIndex + 1),
+  };
+}
+
+function findImportColumn(headers, names) {
+  const aliases = names.map(normalizedText);
+  for (const alias of aliases) {
+    const exact = headers.indexOf(alias);
+    if (exact >= 0) return exact;
+  }
+  return headers.findIndex((header) => aliases.some((alias) => header && (header.includes(alias) || alias.includes(header))));
+}
+
+function findAccountForImport(value) {
+  const text = String(value || "").trim();
+  const normalized = normalizedText(text);
+  return state.data.accounts.find((item) => item.name === text)
+    || state.data.accounts.find((item) => normalizedText(item.name) === normalized)
+    || state.data.accounts.find((item) => normalized && normalizedText(item.name).includes(normalized));
+}
+
+function findCategoryForImport(value) {
+  const text = String(value || "").trim();
+  const codeMatch = text.match(/\d+/);
+  const code = codeMatch ? Number(codeMatch[0]) : NaN;
+  if (Number.isFinite(code)) {
+    const byCode = state.data.categories.find((item) => Number(item.code) === code);
+    if (byCode) return byCode;
+  }
+  const normalized = normalizedText(text);
+  return state.data.categories.find((item) => normalizedText(item.name) === normalized)
+    || state.data.categories.find((item) => normalizedText(item.level4) === normalized)
+    || state.data.categories.find((item) => normalized && normalizedText(item.name).includes(normalized));
+}
+
 function importTransactionRows(rows, kind) {
   if (rows.length < 2) throw new Error("O arquivo não possui linhas para importar.");
-  const headers = rows[0].map(normalizedText);
-  const index = (names) => names.map(normalizedText).map((name) => headers.indexOf(name)).find((position) => position >= 0) ?? -1;
-  const columns = {
-    description: index(["Descrição", "Descricao"]),
-    account: index(["Conta"]),
-    code: index(["Código Categoria", "Codigo Categoria", "Código", "Codigo"]),
-    amount: index(["Valor"]),
-    competenceDate: index(["Competência", "Competencia"]),
-    paymentDate: index(["Pagamento", "Data Pagamento", "Baixa"]),
-  };
-  const missing = Object.entries(columns)
-    .filter(([key, position]) => key !== "paymentDate" && position < 0)
-    .map(([key]) => key);
-  if (missing.length) throw new Error("Layout inválido. Baixe e use o modelo XLS padrão.");
+  const { columns, dataRows } = detectImportLayout(rows, {
+    description: ["Descrição", "Descricao", "Histórico", "Historico", "Lançamento", "Lancamento", "Documento"],
+    account: ["Conta", "Banco", "Cartão", "Cartao", "Conta Banco", "Conta Corrente"],
+    category: ["Código Categoria", "Codigo Categoria", "Código", "Codigo", "Cód.", "Cod.", "Categoria", "Natureza", "Categoria / natureza"],
+    amount: ["Valor", "Valor R$", "Montante", "Total"],
+    competenceDate: ["Competência", "Competencia", "Data Competência", "Data Competencia", "Data Compra", "Data"],
+    paymentDate: ["Pagamento", "Data Pagamento", "Data de Pagamento", "Baixa", "Data Baixa"],
+  }, ["description", "account", "category", "amount", "competenceDate"], "lançamentos e cartões");
 
   const imported = [];
   const errors = [];
-  rows.slice(1).forEach((row, position) => {
+  dataRows.forEach((row, position) => {
     if (!row.some((cell) => String(cell || "").trim())) return;
     const line = position + 2;
     const accountName = row[columns.account]?.trim();
-    const account = state.data.accounts.find((item) => item.name === accountName);
-    const code = Number(row[columns.code]);
-    const category = state.data.categories.find((item) => Number(item.code) === code);
+    const account = findAccountForImport(accountName);
+    const category = findCategoryForImport(row[columns.category]);
     const amount = parseImportAmount(row[columns.amount]);
     const competenceDate = parseImportDate(row[columns.competenceDate]);
     const paymentDate = columns.paymentDate >= 0 ? parseImportDate(row[columns.paymentDate]) : "";
@@ -3088,7 +3136,7 @@ function importTransactionRows(rows, kind) {
     const isCard = account ? account.type === "cartão de crédito" : false;
 
     if (!description || !account || !category || !Number.isFinite(amount) || !amount || !competenceDate) {
-      errors.push(`Linha ${line}: revise descrição, conta, código, valor e competência.`);
+      errors.push(`Linha ${line}: revise descrição, conta, categoria/código, valor e competência.`);
       return;
     }
     if (account.active === false) {
@@ -3118,26 +3166,21 @@ function importTransactionRows(rows, kind) {
 
 function importInvestmentRows(rows) {
   if (rows.length < 2) throw new Error("O arquivo não possui linhas para importar.");
-  const headers = rows[0].map(normalizedText);
-  const index = (names) => names.map(normalizedText).map((name) => headers.indexOf(name)).find((position) => position >= 0) ?? -1;
-  const columns = {
-    date: index(["Data"]),
-    operation: index(["Operação", "Operacao", "Movimento"]),
-    assetType: index(["Tipo", "Tipo Ativo"]),
-    ticker: index(["Ticker", "Ativo"]),
-    assetName: index(["Ativo", "Nome"]),
-    quantity: index(["Quantidade", "Quant.", "Qtd."]),
-    unitPrice: index(["Preço Unitário", "Preco Unitario", "Preço", "Preco"]),
-    fees: index(["Taxas"]),
-    broker: index(["Corretora", "Instituição", "Instituicao"]),
-    notes: index(["Observação", "Observacao"]),
-  };
-  if ([columns.date, columns.operation, columns.assetType, columns.ticker, columns.quantity, columns.unitPrice].some((position) => position < 0)) {
-    throw new Error("Layout inválido. Baixe e use o modelo XLS de investimentos.");
-  }
+  const { columns, dataRows } = detectImportLayout(rows, {
+    date: ["Data", "Data Operação", "Data Operacao", "Dt Operação", "Dt Operacao"],
+    operation: ["Operação", "Operacao", "Movimento", "Tipo Movimento", "Compra/Venda"],
+    assetType: ["Tipo", "Tipo Ativo", "Classe", "Classe Ativo"],
+    ticker: ["Ticker", "Ativo", "Código", "Codigo", "Produto"],
+    assetName: ["Ativo", "Nome", "Nome Ativo", "Descrição", "Descricao"],
+    quantity: ["Quantidade", "Quant.", "Qtd.", "Qtde"],
+    unitPrice: ["Preço Unitário", "Preco Unitario", "Preço", "Preco", "Preço Médio", "Preco Medio"],
+    fees: ["Taxas", "Taxa", "Custos", "Emolumentos"],
+    broker: ["Corretora", "Instituição", "Instituicao", "Conta"],
+    notes: ["Observação", "Observacao", "Notas"],
+  }, ["date", "operation", "assetType", "ticker", "quantity", "unitPrice"], "investimentos");
   const imported = [];
   const errors = [];
-  rows.slice(1).forEach((row, position) => {
+  dataRows.forEach((row, position) => {
     if (!row.some((cell) => String(cell || "").trim())) return;
     const line = position + 2;
     const date = parseImportDate(row[columns.date]);
@@ -3173,23 +3216,18 @@ function importInvestmentRows(rows) {
 
 function importIncomeRows(rows) {
   if (rows.length < 2) throw new Error("O arquivo não possui linhas para importar.");
-  const headers = rows[0].map(normalizedText);
-  const index = (names) => names.map(normalizedText).map((name) => headers.indexOf(name)).find((position) => position >= 0) ?? -1;
-  const columns = {
-    date: index(["Data"]),
-    type: index(["Tipo"]),
-    ticker: index(["Ticker", "Produto", "Ativo"]),
-    amount: index(["Valor", "Saldo Bruto", "Saldo bruto"]),
-    quantity: index(["Quantidade Base", "Quantidade", "Qtd."]),
-    account: index(["Conta", "Instituição", "Instituicao"]),
-    notes: index(["Observação", "Observacao", "Descrição", "Descricao"]),
-  };
-  if ([columns.date, columns.type, columns.ticker, columns.amount].some((position) => position < 0)) {
-    throw new Error("Layout inválido. Baixe e use o modelo XLS de proventos.");
-  }
+  const { columns, dataRows } = detectImportLayout(rows, {
+    date: ["Data", "Data Pagamento", "Pagamento", "Dt Pagamento"],
+    type: ["Tipo", "Evento", "Rendimento", "Provento"],
+    ticker: ["Ticker", "Produto", "Ativo", "Código", "Codigo"],
+    amount: ["Valor", "Saldo Bruto", "Saldo bruto", "Total", "Valor Bruto"],
+    quantity: ["Quantidade Base", "Quantidade", "Qtd.", "Qtde"],
+    account: ["Conta", "Instituição", "Instituicao", "Corretora"],
+    notes: ["Observação", "Observacao", "Descrição", "Descricao", "Notas"],
+  }, ["date", "type", "ticker", "amount"], "proventos");
   const imported = [];
   const errors = [];
-  rows.slice(1).forEach((row, position) => {
+  dataRows.forEach((row, position) => {
     if (!row.some((cell) => String(cell || "").trim())) return;
     const line = position + 2;
     const date = parseImportDate(row[columns.date]);

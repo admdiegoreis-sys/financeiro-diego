@@ -1983,8 +1983,8 @@ function renderInvestmentListSummary(rows) {
   const buys = rows.filter((item) => item.operation !== "venda").reduce((sum, item) => sum + investmentTradeAmount(item), 0);
   const sells = rows.filter((item) => item.operation === "venda").reduce((sum, item) => sum + investmentTradeAmount(item), 0);
   const quantity = rows.reduce((sum, item) => sum + (item.operation === "venda" ? -Number(item.quantity || 0) : Number(item.quantity || 0)), 0);
-  const balance = buys - sells;
-  const avgPrice = quantity > 0 ? balance / quantity : 0;
+  const balance = sells - buys;
+  const avgPrice = quantity > 0 ? buys / quantity : 0;
   $("#investmentListBalance").textContent = formatMoney(balance, true);
   $("#investmentListBalance").className = moneyClass(balance);
   $("#investmentListBuys").textContent = formatMoney(-buys, true);

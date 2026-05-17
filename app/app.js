@@ -145,6 +145,12 @@ function parseImportDate(value) {
   if (!text) return "";
   const parsed = parseDateShort(text);
   if (parsed) return parsed;
+  const flexible = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (flexible) {
+    const [, rawDay, rawMonth, rawYear] = flexible;
+    const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
+    return `${year}-${rawMonth.padStart(2, "0")}-${rawDay.padStart(2, "0")}`;
+  }
   if (/^\d+([,.]\d+)?$/.test(text)) {
     const serial = Number(text.replace(",", "."));
     if (serial > 20000 && serial < 90000) {
@@ -156,7 +162,7 @@ function parseImportDate(value) {
 }
 
 function parseImportAmount(value) {
-  const text = String(value || "").trim().replace(/\s/g, "");
+  const text = String(value || "").trim().replace(/\s/g, "").replace(/R\$/gi, "");
   if (!text) return NaN;
   if (text.includes(",") && text.includes(".")) return Number(text.replace(/\./g, "").replace(",", "."));
   return Number(text.replace(",", "."));
@@ -181,8 +187,13 @@ function normalizeTransactionDates(tx) {
 }
 
 function maskDateShortInput(input) {
+  if (input.type === "date") return;
   const digits = input.value.replace(/\D/g, "").slice(0, 8);
   input.value = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join("/");
+}
+
+function toDateInputValue(value) {
+  return parseDateShort(value) || "";
 }
 
 function moneyClass(value) {
@@ -799,8 +810,8 @@ function ensureSystemCategories() {
       level1: "(=) Transitórias",
       level2: "",
       level3: "",
-      level4: "Caixa de Viagem",
-      group: "Caixa de Viagem",
+      level4: "Transitórias",
+      group: "Transitórias",
       section: "(=) Transitórias",
       level: "",
       macro: "transferencia",
@@ -812,8 +823,8 @@ function ensureSystemCategories() {
       level1: "(=) Transitórias",
       level2: "",
       level3: "",
-      level4: "Adiantamentos",
-      group: "Adiantamentos",
+      level4: "Transitórias",
+      group: "Transitórias",
       section: "(=) Transitórias",
       level: "",
       macro: "transferencia",
@@ -825,8 +836,8 @@ function ensureSystemCategories() {
       level1: "(=) Transitórias",
       level2: "",
       level3: "",
-      level4: "Pagamento Cartão",
-      group: "Pagamento Cartão",
+      level4: "Transitórias",
+      group: "Transitórias",
       section: "(=) Transitórias",
       level: "",
       macro: "transferencia",
@@ -838,8 +849,8 @@ function ensureSystemCategories() {
       level1: "(=) Transitórias",
       level2: "",
       level3: "",
-      level4: "Transferencia entre Contas",
-      group: "Transferencia entre Contas",
+      level4: "Transitórias",
+      group: "Transitórias",
       section: "(=) Transitórias",
       level: "",
       macro: "transferencia",
@@ -1294,13 +1305,13 @@ function renderAccountBalances(periodTransactions, balanceTransactions = periodT
     .slice(0, 8);
   const max = Math.max(...rows.map(([, item]) => Math.abs(item.amount)), 1);
   $("#accountBalanceList").innerHTML = rows
-    .map(([name, item]) => listRow(name, `${formatMoney(item.amount)} · ${integer.format(item.count)} lanç.`, Math.abs(item.amount) / max))
+    .map(([name, item]) => listRow(name, formatMoney(item.amount), Math.abs(item.amount) / max))
     .join("");
 }
 
 function renderCategoryVolume(transactions) {
   const currentMonth = dashboardCurrentExpenseMonth(transactions);
-  const expenseRows = transactions.filter((tx) => tx.month === currentMonth && tx.amount < 0);
+  const expenseRows = transactions.filter((tx) => tx.month === currentMonth && tx.amount < 0 && !isIgnoredCategoryVolume(tx));
   const totals = new Map();
   expenseRows.forEach((tx) => {
     const row = totals.get(tx.category) || { amount: 0, count: 0 };
@@ -1322,7 +1333,7 @@ function renderCategoryVolume(transactions) {
 
 function renderExpenseMix(transactions) {
   const currentMonth = dashboardCurrentExpenseMonth(transactions);
-  const expenses = transactions.filter((tx) => tx.month === currentMonth && tx.amount < 0);
+  const expenses = transactions.filter((tx) => tx.month === currentMonth && tx.amount < 0 && !isIgnoredTrendExpense(tx));
   const rows = [
     ["Fixos", Math.abs(expenses.filter(isFixedExpense).reduce((sum, tx) => sum + tx.amount, 0))],
     ["Variáveis", Math.abs(expenses.filter(isVariableExpense).reduce((sum, tx) => sum + tx.amount, 0))],
@@ -1342,6 +1353,16 @@ function dashboardCurrentExpenseMonth(transactions) {
   return [...new Set(transactions.map((tx) => tx.month).filter((month) => isPaymentMonth(month) && txMonthHasExpense(transactions, month)))]
     .sort()
     .pop() || "";
+}
+
+function isIgnoredCategoryVolume(tx) {
+  return Number(tx.code) === 9997 || normalizedText(tx.category).includes("adiantamento");
+}
+
+function isIgnoredTrendExpense(tx) {
+  const code = Number(tx.code);
+  const category = normalizedText(tx.category);
+  return code === 9997 || code === 9998 || category.includes("adiantamento") || category.includes("pagamento cartao");
 }
 
 function txMonthHasExpense(transactions, month) {
@@ -1468,7 +1489,7 @@ function renderTrendList() {
   const lastSix = new Set(months);
   const byCategory = new Map();
   transactions
-    .filter((tx) => lastSix.has(tx.month) && tx.amount < 0)
+    .filter((tx) => lastSix.has(tx.month) && tx.amount < 0 && !isIgnoredTrendExpense(tx))
     .forEach((tx) => {
       const row = byCategory.get(tx.category) || { amount: 0, count: 0 };
       row.amount += tx.amount;
@@ -1586,10 +1607,7 @@ function renderCashflow() {
     "Gastos com Imóvel",
     "Filhos/Presentes/Doações",
     "Outros Temporários",
-    "Caixa de Viagem",
-    "Adiantamentos",
-    "Pagamento Cartão",
-    "Transferencia entre Contas",
+    "Transitórias",
   ];
   const orderOf = (list, value) => {
     const index = list.indexOf(value);
@@ -1974,6 +1992,7 @@ function renderInvestmentListSummary(rows) {
   $("#investmentListSells").textContent = formatMoney(sells, true);
   $("#investmentListSells").className = moneyClass(sells);
   $("#investmentListAvgPrice").textContent = currencyCents.format(avgPrice);
+  $("#investmentListQuantity").textContent = formatQuantity(quantity);
 }
 
 function investmentRow(item) {
@@ -2270,7 +2289,10 @@ function render() {
 function bindEvents() {
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.addEventListener("click", () => {
-      if (state.activeView !== button.dataset.view) resetViewFilters(state.activeView);
+      if (state.activeView !== button.dataset.view) {
+        resetViewFilters(state.activeView);
+        resetViewFilters(button.dataset.view);
+      }
       state.activeView = button.dataset.view;
       document.querySelectorAll(".top-nav .nav-group").forEach((group) => {
         group.open = false;
@@ -2856,7 +2878,7 @@ function openNewTransactionModal(kind = "regular") {
   const preferredAccount = state.data.accounts.find((account) => account.type === $("#editTxAccountType").value);
   if (preferredAccount) $("#editTxAccount").value = preferredAccount.name;
   const today = new Date().toISOString().slice(0, 10);
-  $("#editTxCompetenceDate").value = formatDateShort(today);
+  $("#editTxCompetenceDate").value = today;
   $("#editTxPaymentDate").value = "";
   $("#transactionEditModal").hidden = false;
 }
@@ -2884,8 +2906,8 @@ function editTransaction(id) {
   refreshTransactionCategorySelects(Number(tx.code));
   $("#editTxCategory").value = String(tx.code);
   $("#editTxAmount").value = tx.amount;
-  $("#editTxCompetenceDate").value = formatDateShort(tx.competenceDate || tx.paymentDate || "");
-  $("#editTxPaymentDate").value = formatDateShort(tx.paymentDate || "");
+  $("#editTxCompetenceDate").value = toDateInputValue(tx.competenceDate || tx.paymentDate || "");
+  $("#editTxPaymentDate").value = toDateInputValue(tx.paymentDate || "");
   $("#transactionEditModal").hidden = false;
 }
 
@@ -3306,7 +3328,7 @@ function openNewInvestmentModal() {
   $("#investmentEditForm").reset();
   $("#editInvestmentId").value = "";
   refreshInvestmentFilters();
-  $("#editInvestmentDate").value = formatDateShort(new Date().toISOString().slice(0, 10));
+  $("#editInvestmentDate").value = new Date().toISOString().slice(0, 10);
   $("#investmentEditModal").hidden = false;
 }
 
@@ -3318,7 +3340,7 @@ function editInvestment(id) {
   $("#investmentEditForm").reset();
   refreshInvestmentFilters();
   $("#editInvestmentId").value = item.id;
-  $("#editInvestmentDate").value = formatDateShort(item.date);
+  $("#editInvestmentDate").value = toDateInputValue(item.date);
   $("#editInvestmentOperation").value = item.operation || "compra";
   $("#editInvestmentAssetType").value = item.assetType || "ação";
   $("#editInvestmentTicker").value = item.ticker || "";
@@ -3393,7 +3415,7 @@ function openNewIncomeModal() {
   $("#saveIncomeModalButton").textContent = "Salvar provento";
   $("#incomeEditForm").reset();
   $("#editIncomeId").value = "";
-  $("#editIncomeDate").value = formatDateShort(new Date().toISOString().slice(0, 10));
+  $("#editIncomeDate").value = new Date().toISOString().slice(0, 10);
   $("#incomeEditModal").hidden = false;
 }
 
@@ -3404,7 +3426,7 @@ function editIncome(id) {
   $("#saveIncomeModalButton").textContent = "Salvar alterações";
   $("#incomeEditForm").reset();
   $("#editIncomeId").value = item.id;
-  $("#editIncomeDate").value = formatDateShort(item.date);
+  $("#editIncomeDate").value = toDateInputValue(item.date);
   $("#editIncomeType").value = item.type || "dividendo";
   $("#editIncomeTicker").value = item.ticker || "";
   $("#editIncomeAmount").value = item.amount || "";
@@ -3571,7 +3593,7 @@ function openNewAccountModal() {
   $("#editAccountOriginalName").value = "";
   $("#editAccountType").value = "corrente";
   $("#editAccountOpeningBalance").value = "0.00";
-  $("#editAccountOpeningDate").value = "31/12/2022";
+  $("#editAccountOpeningDate").value = "2022-12-31";
   $("#editAccountActive").value = "active";
   $("#accountEditModal").hidden = false;
 }
@@ -3586,7 +3608,7 @@ function editAccount(name) {
   $("#editAccountInstitution").value = account.institution || "";
   $("#editAccountType").value = account.type || "corrente";
   $("#editAccountOpeningBalance").value = Number(account.openingBalance || 0).toFixed(2);
-  $("#editAccountOpeningDate").value = formatDateShort(account.openingDate || "2022-12-31");
+  $("#editAccountOpeningDate").value = toDateInputValue(account.openingDate || "2022-12-31");
   $("#editAccountActive").value = account.active === false ? "inactive" : "active";
   $("#accountEditModal").hidden = false;
 }

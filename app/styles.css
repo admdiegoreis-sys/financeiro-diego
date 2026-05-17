@@ -448,7 +448,7 @@ input:focus {
 }
 
 .investment-list-summary {
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
   margin-bottom: 14px;
 }
 
@@ -1131,7 +1131,7 @@ table {
 
 #transactionsTable,
 #cardsTable {
-  min-width: 1120px;
+  min-width: 1260px;
   table-layout: fixed;
 }
 
@@ -1180,38 +1180,50 @@ td {
 
 #transactionsTable th:nth-child(5),
 #cardsTable th:nth-child(5) {
-  width: 90px;
+  width: 86px;
 }
 
 #transactionsTable th:nth-child(6),
 #cardsTable th:nth-child(6) {
-  width: 17%;
+  width: 104px;
 }
 
 #transactionsTable th:nth-child(7),
-#cardsTable th:nth-child(7),
+#cardsTable th:nth-child(7) {
+  width: 16%;
+}
+
+#transactionsTable th:nth-child(8),
+#cardsTable th:nth-child(8),
 #transactionsTable .tx-code,
 #cardsTable .tx-code {
   width: 58px;
 }
 
-#transactionsTable th:nth-child(8),
-#cardsTable th:nth-child(8),
+#transactionsTable th:nth-child(9),
+#cardsTable th:nth-child(9),
 #transactionsTable .tx-type,
 #cardsTable .tx-type {
   width: 96px;
 }
 
-#transactionsTable th:nth-child(9),
-#cardsTable th:nth-child(9) {
+#transactionsTable th:nth-child(10),
+#cardsTable th:nth-child(10) {
   width: 104px;
 }
 
-#transactionsTable th:nth-child(10),
-#cardsTable th:nth-child(10),
+#transactionsTable th:nth-child(11),
+#cardsTable th:nth-child(11),
 #transactionsTable .action-cell,
 #cardsTable .action-cell {
-  width: 128px;
+  width: 188px;
+}
+
+#transactionsTable .action-cell,
+#cardsTable .action-cell {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 #transactionsTable .tx-description,
@@ -1259,7 +1271,7 @@ th {
   background: #eef4f1;
   color: #3d4b45;
   font-size: 0.78rem;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 tr:hover td {

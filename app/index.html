@@ -372,6 +372,10 @@
                 <span>Preço médio</span>
                 <strong id="investmentListAvgPrice">R$ 0,00</strong>
               </article>
+              <article class="summary-card">
+                <span>Quantidade</span>
+                <strong id="investmentListQuantity">0</strong>
+              </article>
             </div>
             <div class="table-wrap compact-wrap">
               <table id="investmentsTable"></table>
@@ -499,7 +503,7 @@
               </div>
             </article>
 
-            <input id="importExcelFile" type="file" accept=".xls,.html,.csv,.txt" hidden />
+            <input id="importExcelFile" type="file" accept=".xls,.xlsx,.html,.csv,.txt" hidden />
 
             <article class="panel import-history-panel">
               <div class="panel-header">
@@ -615,11 +619,11 @@
               </label>
               <label>
                 <span>Competência</span>
-                <input id="editTxCompetenceDate" required type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+                <input id="editTxCompetenceDate" required type="date" />
               </label>
               <label>
                 <span>Pagamento</span>
-                <input id="editTxPaymentDate" type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+                <input id="editTxPaymentDate" type="date" />
               </label>
               <div class="form-actions modal-actions">
                 <button id="saveTransactionModalButton" class="primary-button" type="submit">Salvar lançamento</button>
@@ -664,7 +668,7 @@
               </label>
               <label>
                 <span>Data saldo inicial</span>
-                <input id="editAccountOpeningDate" required type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+                <input id="editAccountOpeningDate" required type="date" />
               </label>
               <label>
                 <span>Status</span>
@@ -694,7 +698,7 @@
               <input id="editInvestmentId" type="hidden" />
               <label>
                 <span>Data</span>
-                <input id="editInvestmentDate" required type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+                <input id="editInvestmentDate" required type="date" />
               </label>
               <label>
                 <span>Operação</span>
@@ -756,7 +760,7 @@
               <input id="editIncomeId" type="hidden" />
               <label>
                 <span>Data</span>
-                <input id="editIncomeDate" required type="text" inputmode="numeric" maxlength="10" placeholder="00/00/0000" />
+                <input id="editIncomeDate" required type="date" />
               </label>
               <label>
                 <span>Tipo</span>

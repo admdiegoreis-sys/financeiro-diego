@@ -1783,9 +1783,9 @@ function transactionTableHtml(transactions) {
               <td class="tx-type"><span class="pill ${tx.macro}">${escapeHtml(tx.macro)}</span></td>
               ${amountCell(tx.amount, true)}
               <td class="action-cell">
-                <button class="table-action" data-action="edit-transaction" data-id="${escapeHtml(tx.id)}" type="button">Editar</button>
-                <button class="table-action" data-action="duplicate-transaction" data-id="${escapeHtml(tx.id)}" type="button">Duplicar</button>
-                <button class="table-action danger" data-action="delete-transaction" data-id="${escapeHtml(tx.id)}" type="button">Excluir</button>
+                <button class="table-action icon-only" data-action="edit-transaction" data-id="${escapeHtml(tx.id)}" type="button" title="Editar" aria-label="Editar lançamento"><span aria-hidden="true">&#9998;</span></button>
+                <button class="table-action icon-only" data-action="duplicate-transaction" data-id="${escapeHtml(tx.id)}" type="button" title="Duplicar" aria-label="Duplicar lançamento"><span aria-hidden="true">&#10697;</span></button>
+                <button class="table-action icon-only danger" data-action="delete-transaction" data-id="${escapeHtml(tx.id)}" type="button" title="Excluir" aria-label="Excluir lançamento"><span aria-hidden="true">&#128465;</span></button>
               </td>
             </tr>
           `,

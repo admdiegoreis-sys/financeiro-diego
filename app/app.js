@@ -2992,8 +2992,8 @@ function handleTransactionImportFile(event) {
   const reader = new FileReader();
   reader.onload = () => {
     try {
-      const rows = /\.xlsx$/i.test(file.name)
-        ? parseXlsxWorkbook(reader.result)
+      const rows = /\.(xlsx|xls)$/i.test(file.name)
+        ? parseExcelWorkbook(reader.result)
         : parseImportTable(String(reader.result || ""));
       const imported = importRowsByKind(rows, kind);
       registerImportHistory(kind, file.name, imported);
@@ -3030,14 +3030,23 @@ function parseImportTable(text) {
   return parseDelimitedTable(text);
 }
 
+function parseExcelWorkbook(buffer) {
+  const rows = parseXlsxWorkbook(buffer);
+  if (rows.length) return rows;
+  const text = new TextDecoder("utf-8").decode(buffer);
+  return parseImportTable(text);
+}
+
 function parseXlsxWorkbook(buffer) {
   if (!window.XLSX) throw new Error("A biblioteca de leitura XLSX não carregou. Recarregue a página e tente novamente.");
   const workbook = window.XLSX.read(buffer, { type: "array" });
-  const firstSheet = workbook.SheetNames[0];
-  if (!firstSheet) return [];
-  return window.XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { header: 1, raw: false, defval: "" })
-    .map((row) => row.map((cell) => String(cell || "").trim()))
-    .filter((row) => row.some(Boolean));
+  for (const sheetName of workbook.SheetNames) {
+    const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: "" })
+      .map((row) => row.map((cell) => String(cell || "").trim()))
+      .filter((row) => row.some(Boolean));
+    if (rows.length) return rows;
+  }
+  return [];
 }
 
 function parseHtmlTable(text) {

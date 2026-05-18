@@ -141,6 +141,12 @@ function parseDateShort(value) {
 }
 
 function parseImportDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
   const text = String(value || "").trim();
   if (!text) return "";
   const parsed = parseDateShort(text);
@@ -3074,10 +3080,10 @@ function isExcelExternalSheetHtml(text) {
 
 function parseXlsxWorkbook(buffer) {
   if (!window.XLSX) throw new Error("A biblioteca de leitura XLSX não carregou. Recarregue a página e tente novamente.");
-  const workbook = window.XLSX.read(buffer, { type: "array" });
+  const workbook = window.XLSX.read(buffer, { type: "array", cellDates: true });
   for (const sheetName of workbook.SheetNames) {
-    const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: "" })
-      .map((row) => row.map((cell) => String(cell || "").trim()))
+    const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true, defval: "" })
+      .map((row) => row.map((cell) => typeof cell === "string" ? cell.trim() : cell))
       .filter((row) => row.some(Boolean));
     if (rows.length) return rows;
   }

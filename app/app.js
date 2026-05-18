@@ -1709,29 +1709,36 @@ function cashflowLabel(row) {
 }
 
 function renderTransactions() {
-  const transactions = sortTransactions(filteredTransactionsBy({
-    account: state.account,
-    search: state.search,
-    accountKind: "regular",
-    type: state.transactionType,
-    paymentStatus: state.transactionStatus,
-  }), state.transactionSort);
+  const transactions = currentTransactionRows("regular");
   $("#transactionCountLabel").textContent = `${integer.format(transactions.length)} lançamentos encontrados`;
   renderTransactionSummary(transactions, "transaction");
   $("#transactionsTable").innerHTML = transactionTableHtml(transactions.slice(0, 600));
 }
 
 function renderCards() {
-  const transactions = sortTransactions(filteredTransactionsBy({
-    account: state.cardAccount,
-    search: state.cardSearch,
-    accountKind: "card",
-    type: state.cardType,
-    paymentStatus: state.cardStatus,
-  }), state.cardSort);
+  const transactions = currentTransactionRows("card");
   $("#cardCountLabel").textContent = `${integer.format(transactions.length)} lançamentos encontrados`;
   renderTransactionSummary(transactions, "card");
   $("#cardsTable").innerHTML = transactionTableHtml(transactions.slice(0, 600));
+}
+
+function currentTransactionRows(kind) {
+  if (kind === "card") {
+    return sortTransactions(filteredTransactionsBy({
+      account: state.cardAccount,
+      search: state.cardSearch,
+      accountKind: "card",
+      type: state.cardType,
+      paymentStatus: state.cardStatus,
+    }), state.cardSort);
+  }
+  return sortTransactions(filteredTransactionsBy({
+    account: state.account,
+    search: state.search,
+    accountKind: "regular",
+    type: state.transactionType,
+    paymentStatus: state.transactionStatus,
+  }), state.transactionSort);
 }
 
 function renderTransactionSummary(transactions, prefix) {
@@ -1815,6 +1822,48 @@ function transactionSourceLabel(tx) {
 function paymentDateCell(tx) {
   if (tx.paymentDate) return escapeHtml(formatDateShort(tx.paymentDate));
   return `<span class="pill pending">Pendente</span>`;
+}
+
+function exportTransactionsToExcel(kind) {
+  if (!window.XLSX) {
+    alert("A biblioteca de exportação XLSX não carregou. Recarregue a página e tente novamente.");
+    return;
+  }
+  const rows = currentTransactionRows(kind);
+  if (!rows.length) {
+    alert("Não há lançamentos para exportar com os filtros atuais.");
+    return;
+  }
+  const header = ["Competência", "Pagamento", "Descrição", "Conta", "Tipo Conta", "Origem", "Categoria", "Código", "Tipo", "Valor"];
+  const dataRows = rows.map((tx) => [
+    formatDateShort(tx.competenceDate),
+    formatDateShort(tx.paymentDate),
+    tx.description || "",
+    tx.account || "",
+    transactionKindLabel(tx),
+    transactionSourceLabel(tx),
+    tx.category || "",
+    tx.code || "",
+    tx.macro || "",
+    Number(tx.amount || 0),
+  ]);
+  const worksheet = window.XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+  worksheet["!cols"] = [
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 34 },
+    { wch: 24 },
+    { wch: 16 },
+    { wch: 20 },
+    { wch: 26 },
+    { wch: 10 },
+    { wch: 14 },
+    { wch: 14 },
+  ];
+  const workbook = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(workbook, worksheet, kind === "card" ? "Cartao" : "Lancamentos");
+  const date = new Date().toISOString().slice(0, 10);
+  window.XLSX.writeFile(workbook, kind === "card" ? `cartao_credito_${date}.xlsx` : `lancamentos_${date}.xlsx`);
 }
 
 function renderCategories() {
@@ -2500,6 +2549,8 @@ function bindEvents() {
   $("#newCategoryButton").addEventListener("click", openNewCategoryModal);
   $("#newTransactionButton").addEventListener("click", () => openNewTransactionModal("regular"));
   $("#newCardTransactionButton").addEventListener("click", () => openNewTransactionModal("card"));
+  $("#exportTransactionsButton").addEventListener("click", () => exportTransactionsToExcel("regular"));
+  $("#exportCardsButton").addEventListener("click", () => exportTransactionsToExcel("card"));
   $("#newInvestmentTradeButton").addEventListener("click", openNewInvestmentModal);
   $("#newIncomeButton").addEventListener("click", openNewIncomeModal);
   $("#newInvestmentAssetButton").addEventListener("click", openNewInvestmentAssetModal);

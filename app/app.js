@@ -37,6 +37,8 @@ const state = {
   incomeSearch: "",
   incomeType: "all",
   pendingImportKind: "regular",
+  editingTransactionId: "",
+  duplicatingTransaction: false,
 };
 
 const storageKeys = {
@@ -2925,6 +2927,8 @@ function deleteCategory(code) {
 
 function openNewTransactionModal(kind = "regular") {
   state.transactionModalKind = kind;
+  state.editingTransactionId = "";
+  state.duplicatingTransaction = false;
   $("#transactionEditTitle").textContent = kind === "card" ? "Novo lançamento de cartão" : "Novo lançamento";
   $("#saveTransactionModalButton").textContent = "Salvar lançamento";
   $("#transactionEditForm").reset();
@@ -2941,11 +2945,13 @@ function openNewTransactionModal(kind = "regular") {
 }
 
 function editTransaction(id) {
-  const tx = state.data.transactions.find((item) => item.id === id);
+  const tx = findTransactionById(id);
   if (!tx) return;
   $("#transactionEditForm").reset();
   const kind = isCreditCardTransaction(tx) ? "card" : "regular";
   state.transactionModalKind = kind;
+  state.editingTransactionId = tx.id;
+  state.duplicatingTransaction = false;
   $("#transactionEditTitle").textContent = "Editar lançamento";
   $("#saveTransactionModalButton").textContent = "Salvar alterações";
   $("#editTransactionId").value = tx.id;
@@ -2969,10 +2975,12 @@ function editTransaction(id) {
 }
 
 function duplicateTransaction(id) {
-  const tx = state.data.transactions.find((item) => item.id === id);
+  const tx = findTransactionById(id);
   if (!tx) return;
   editTransaction(id);
   $("#editTransactionId").value = "";
+  state.editingTransactionId = "";
+  state.duplicatingTransaction = true;
   $("#transactionEditTitle").textContent = isCreditCardTransaction(tx) ? "Duplicar lançamento de cartão" : "Duplicar lançamento";
   $("#saveTransactionModalButton").textContent = "Salvar cópia";
 }
@@ -2982,6 +2990,8 @@ function closeTransactionEditModal() {
   $("#transactionEditForm").reset();
   $("#editTransactionId").value = "";
   $("#editTransactionKind").value = "";
+  state.editingTransactionId = "";
+  state.duplicatingTransaction = false;
 }
 
 function downloadTransactionTemplate(kind) {
@@ -3385,7 +3395,9 @@ function buildImportedTransaction({ account, category, amount, competenceDate, p
 }
 
 function saveEditedTransaction() {
-  const existingId = $("#editTransactionId").value;
+  const rawExistingId = state.duplicatingTransaction ? "" : ($("#editTransactionId").value || state.editingTransactionId);
+  const originalTx = rawExistingId ? findTransactionById(rawExistingId) : null;
+  const existingId = originalTx?.id || rawExistingId;
   const code = Number($("#editTxCategory").value);
   const category = state.data.categories.find((item) => Number(item.code) === code);
   const account = $("#editTxAccount").value;
@@ -3400,7 +3412,7 @@ function saveEditedTransaction() {
 
   const tx = {
     id: existingId || `manual-${Date.now()}`,
-    sheet: "Manual",
+    sheet: originalTx?.sheet || "Manual",
     account,
     institution: state.data.accounts.find((item) => item.name === account)?.institution || account.split(" - ")[0] || "Manual",
     accountType: state.data.accounts.find((item) => item.name === account)?.type || account.split(" - ")[1] || "Manual",
@@ -3420,7 +3432,7 @@ function saveEditedTransaction() {
     dueDate: paymentDate || null,
     paymentDate: paymentDate || null,
     month: paymentDate ? paymentDate.slice(0, 7) : "sem-data",
-    status: paymentDate ? "manual" : "previsto",
+    status: paymentDate ? (originalTx?.status || "manual") : "previsto",
   };
 
   const saved = readStorage(storageKeys.transactions).filter((item) => item.id !== tx.id);
@@ -3429,12 +3441,12 @@ function saveEditedTransaction() {
   const deleted = new Set(readStorage(storageKeys.deletedTransactions));
   deleted.delete(tx.id);
   writeStorage(storageKeys.deletedTransactions, [...deleted]);
-    state.data.transactions = state.data.transactions.filter((item) => item.id !== tx.id);
-    state.data.transactions.unshift(tx);
-    const duplicates = findSimilarTransactions(tx, tx.id);
-    if (duplicates.length) {
-      alert(`Atenção: encontrei ${duplicates.length} possível(is) lançamento(s) duplicado(s) com mesma data, valor, conta e categoria.`);
-    }
+  state.data.transactions = state.data.transactions.filter((item) => item.id !== tx.id);
+  state.data.transactions.unshift(tx);
+  const duplicates = findSimilarTransactions(tx, tx.id);
+  if (duplicates.length) {
+    alert(`Atenção: encontrei ${duplicates.length} possível(is) lançamento(s) duplicado(s) com mesma data, valor, conta e categoria.`);
+  }
   closeTransactionEditModal();
   render();
 }
@@ -3443,6 +3455,27 @@ function findSimilarTransactions(tx, ignoreId = "") {
   const key = duplicateTransactionKey(tx);
   if (!key) return [];
   return state.data.transactions.filter((item) => item.id !== ignoreId && duplicateTransactionKey(item) === key);
+}
+
+function findTransactionById(id) {
+  const text = String(id || "");
+  const repaired = repairMojibake(text);
+  return state.data.transactions.find((item) => item.id === text)
+    || state.data.transactions.find((item) => item.id === repaired);
+}
+
+function repairMojibake(value) {
+  let text = String(value || "");
+  if (!/[ÃÂ]/.test(text)) return text;
+  for (let index = 0; index < 2 && /[ÃÂ]/.test(text); index += 1) {
+    try {
+      const bytes = Uint8Array.from([...text].map((char) => char.charCodeAt(0) & 255));
+      text = new TextDecoder("utf-8").decode(bytes);
+    } catch (_error) {
+      return String(value || "");
+    }
+  }
+  return text;
 }
 
 function duplicateTransactionKey(tx) {

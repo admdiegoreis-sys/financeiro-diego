@@ -156,11 +156,23 @@
               <div id="yearExpenseChart" class="year-expense-chart"></div>
             </section>
 
-            <section class="panel">
+            <section class="panel account-balance-panel">
               <div class="panel-header">
                 <h2>Saldos em contas</h2>
               </div>
+              <div class="account-total">
+                <span>Total</span>
+                <strong id="accountBalanceTotal">R$ 0</strong>
+              </div>
               <div id="accountBalanceList" class="stack-list"></div>
+            </section>
+
+            <section class="panel expense-package-panel">
+              <div class="panel-header">
+                <h2>Pacotes de despesas <small>(% do mês)</small></h2>
+                <span id="expensePackageRangeLabel"></span>
+              </div>
+              <div id="expensePackageChart" class="expense-package-chart"></div>
             </section>
 
             <section class="panel">

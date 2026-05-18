@@ -1113,6 +1113,7 @@ function renderDashboard() {
 
   renderMonthlyChart();
   renderAccountBalances(transactions, balanceTransactions, balanceCutoff);
+  renderExpensePackageChart();
   renderCategoryVolume(transactions);
   renderExpenseMix(transactions);
   renderYearExpenseChart();
@@ -1322,8 +1323,11 @@ function renderAccountBalances(periodTransactions, balanceTransactions = periodT
   });
   const rows = [...totals.entries()]
     .sort((a, b) => Math.abs(b[1].amount) - Math.abs(a[1].amount))
-    .slice(0, 8);
+    .slice(0, 5);
   const max = Math.max(...rows.map(([, item]) => Math.abs(item.amount)), 1);
+  const total = [...totals.values()].reduce((sum, item) => sum + item.amount, 0);
+  $("#accountBalanceTotal").textContent = formatMoney(total, true);
+  $("#accountBalanceTotal").className = moneyClass(total);
   $("#accountBalanceList").innerHTML = rows
     .map(([name, item]) => listRow(name, formatMoney(item.amount), Math.abs(item.amount) / max))
     .join("");
@@ -1411,6 +1415,75 @@ function isTransitoryTransaction(tx) {
 function isInvestmentAccountTransaction(tx) {
   const account = state.data.accounts.find((item) => item.name === tx.account);
   return normalizeAccountType(tx.accountType || account?.type || "") === "investimento";
+}
+
+function renderExpensePackageChart() {
+  const packages = [
+    { key: "essential", label: "Essenciais" },
+    { key: "nonEssential", label: "Não essenciais" },
+    { key: "temporary", label: "Temporários" },
+    { key: "financing", label: "Financiamento" },
+    { key: "investment", label: "Investimento" },
+  ];
+  const year = dashboardExpensePackageYear();
+  const months = Array.from({ length: 12 }, (_, index) => `${year}-${String(index + 1).padStart(2, "0")}`);
+  const totals = new Map(months.map((month) => [month, Object.fromEntries(packages.map((item) => [item.key, 0]))]));
+  state.data.transactions
+    .filter((tx) => String(tx.month || "").slice(0, 4) === year && tx.amount < 0 && !isTransitoryTransaction(tx) && !isInvestmentAccountTransaction(tx))
+    .forEach((tx) => {
+      const key = expensePackageKey(tx);
+      if (!key || !totals.has(tx.month)) return;
+      totals.get(tx.month)[key] += Math.abs(Number(tx.amount || 0));
+    });
+  $("#expensePackageRangeLabel").textContent = year;
+  $("#expensePackageChart").innerHTML = `
+    <div class="expense-package-legend">
+      ${packages.map((item) => `<span><i class="${item.key}"></i>${escapeHtml(item.label)}</span>`).join("")}
+    </div>
+    <div class="expense-package-bars">
+      ${months.map((month) => expensePackageMonth(month, totals.get(month), packages)).join("")}
+    </div>
+  `;
+}
+
+function dashboardExpensePackageYear() {
+  if (state.dashboardYear !== "all") return state.dashboardYear;
+  return defaultDashboardYear() === "all" ? String(new Date().getFullYear()) : defaultDashboardYear();
+}
+
+function expensePackageKey(tx) {
+  const level1 = normalizedText(tx.level1);
+  const level3 = normalizedText(tx.level3);
+  if (level3 === "despesas fixas (essencial)") return "essential";
+  if (level3 === "despesas fixas (nao essencial)") return "nonEssential";
+  if (level3 === "despesas temporarias") return "temporary";
+  if (level1 === "(=) resultado financiamento") return "financing";
+  if (level1 === "(=) resultado investimento") return "investment";
+  return "";
+}
+
+function expensePackageMonth(month, totals, packages) {
+  const total = packages.reduce((sum, item) => sum + Number(totals[item.key] || 0), 0);
+  return `
+    <div class="expense-package-month">
+      <div class="expense-package-stack" title="${escapeHtml(cashflowMonthLabel(month))}: ${escapeHtml(formatMoney(total, true))}">
+        ${packages.map((item) => {
+          const amount = Number(totals[item.key] || 0);
+          const share = total ? (amount / total) * 100 : 0;
+          return `
+            <div class="expense-package-segment ${item.key}" style="height:${share}%" title="${escapeHtml(item.label)}: ${Math.round(share)}% · ${escapeHtml(formatMoney(amount, true))}">
+              ${share >= 11 ? `<span>${Math.round(share)}%</span>` : ""}
+            </div>
+          `;
+        }).join("")}
+      </div>
+      <strong>${escapeHtml(monthLabelShort(month))}</strong>
+    </div>
+  `;
+}
+
+function monthLabelShort(month) {
+  return cashflowMonthLabel(month).split("/")[0];
 }
 
 function txMonthHasExpense(transactions, month) {

@@ -508,6 +508,14 @@ input:focus {
   grid-row: span 1;
 }
 
+.account-balance-panel {
+  min-height: 0;
+}
+
+.expense-package-panel {
+  min-height: 0;
+}
+
 .panel {
   min-width: 0;
   padding: 16px;
@@ -928,6 +936,27 @@ input:focus {
   gap: 10px;
 }
 
+.account-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 0 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.account-total span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.account-total strong {
+  font-size: 1.24rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .list-row {
   display: grid;
   gap: 6px;
@@ -1166,6 +1195,107 @@ input:focus {
   font-size: 0.7rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+.expense-package-chart {
+  display: grid;
+  gap: 12px;
+  min-height: 214px;
+}
+
+.expense-package-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.expense-package-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.expense-package-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.expense-package-bars {
+  height: 178px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(34px, 1fr));
+  gap: 8px;
+  align-items: end;
+}
+
+.expense-package-month {
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 18px;
+  gap: 6px;
+  align-items: end;
+}
+
+.expense-package-stack {
+  height: 100%;
+  width: min(34px, 86%);
+  justify-self: center;
+  display: flex;
+  flex-direction: column-reverse;
+  border-radius: 5px 5px 0 0;
+  overflow: hidden;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--line);
+}
+
+.expense-package-segment {
+  min-height: 1px;
+  display: grid;
+  place-items: center;
+}
+
+.expense-package-segment span {
+  color: #ffffff;
+  font-size: 0.54rem;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(22, 33, 29, 0.28);
+}
+
+.expense-package-month strong {
+  color: var(--muted);
+  font-size: 0.62rem;
+  text-align: center;
+  font-weight: 800;
+}
+
+.expense-package-segment.essential,
+.expense-package-legend i.essential {
+  background: #1f5fa8;
+}
+
+.expense-package-segment.nonEssential,
+.expense-package-legend i.nonEssential {
+  background: var(--yellow);
+}
+
+.expense-package-segment.temporary,
+.expense-package-legend i.temporary {
+  background: var(--red);
+}
+
+.expense-package-segment.financing,
+.expense-package-legend i.financing {
+  background: #45b5d8;
+}
+
+.expense-package-segment.investment,
+.expense-package-legend i.investment {
+  background: #146c2e;
 }
 
 .table-wrap {

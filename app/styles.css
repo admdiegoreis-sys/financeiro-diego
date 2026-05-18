@@ -287,6 +287,11 @@ input {
   font-size: 0.9rem;
 }
 
+.inline-filters input[type="date"] {
+  min-width: 132px;
+  width: 132px;
+}
+
 input[type="search"] {
   width: min(420px, 58vw);
 }
@@ -576,7 +581,8 @@ input:focus {
 }
 
 #categoriesTable {
-  min-width: 1380px;
+  min-width: 0;
+  table-layout: fixed;
 }
 
 #categoriesTable th,
@@ -598,8 +604,55 @@ input:focus {
 
 #categoriesTable .table-action {
   height: 28px;
-  padding: 0 8px;
   font-size: 0.76rem;
+}
+
+#categoriesTable th:nth-child(1),
+#categoriesTable .cat-name {
+  width: 18%;
+}
+
+#categoriesTable th:nth-child(2),
+#categoriesTable .cat-code {
+  width: 68px;
+}
+
+#categoriesTable th:nth-child(3),
+#categoriesTable th:nth-child(4),
+#categoriesTable th:nth-child(5),
+#categoriesTable th:nth-child(6),
+#categoriesTable .cat-level {
+  width: 16%;
+}
+
+#categoriesTable th:nth-child(7),
+#categoriesTable .cat-type {
+  width: 92px;
+}
+
+#categoriesTable th:nth-child(8),
+#categoriesTable .action-cell {
+  width: 70px;
+}
+
+#categoriesTable .cat-name,
+#categoriesTable .cat-level {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+#categoriesTable .action-cell {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+#categoriesTable .table-action.icon-only {
+  width: 26px;
+  min-width: 26px;
+  padding: 0;
+  font-size: 0.82rem;
+  line-height: 1;
 }
 
 .table-action {
@@ -1559,15 +1612,15 @@ tr:hover td {
 }
 
 #investmentsTable {
-  min-width: 1280px;
+  min-width: 1160px;
 }
 
 #incomeTable {
-  min-width: 980px;
+  min-width: 900px;
 }
 
 #investmentAssetsTable {
-  min-width: 1080px;
+  min-width: 980px;
 }
 
 #investmentsTable th,

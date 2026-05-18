@@ -12,10 +12,14 @@ const state = {
   search: "",
   transactionType: "all",
   transactionStatus: "all",
+  transactionDateStart: "",
+  transactionDateEnd: "",
   cardAccount: "all",
   cardSearch: "",
   cardType: "all",
   cardStatus: "all",
+  cardDateStart: "",
+  cardDateEnd: "",
   transactionSort: "date_desc",
   cardSort: "date_desc",
   transactionModalKind: "regular",
@@ -245,9 +249,12 @@ function filteredTransactions() {
   });
 }
 
-function filteredTransactionsBy({ account = "all", search = "", accountKind = "all", type = state.macro, month = state.month, paymentStatus = "all" } = {}) {
+function filteredTransactionsBy({ account = "all", search = "", accountKind = "all", type = state.macro, month = state.month, paymentStatus = "all", dateStart = "", dateEnd = "" } = {}) {
   return state.data.transactions.filter((tx) => {
     if (month !== "all" && tx.month !== month) return false;
+    const txDate = tx.paymentDate || tx.competenceDate || tx.dueDate || "";
+    if (dateStart && (!txDate || txDate < dateStart)) return false;
+    if (dateEnd && (!txDate || txDate > dateEnd)) return false;
     if (account !== "all" && tx.account !== account) return false;
     if (type !== "all" && tx.macro !== type) return false;
     if (paymentStatus === "paid" && !tx.paymentDate) return false;
@@ -1263,7 +1270,7 @@ function accountBalances(periodTransactions, balanceTransactions = periodTransac
   const cutoffDate = `${cutoffMonth}-31`;
   state.data.accounts.forEach((account) => {
     if (state.account !== "all" && account.name !== state.account) return;
-    if (state.account === "all" && (account.active === false || normalizeAccountType(account.type) !== "corrente")) return;
+    if (!isDashboardBalanceAccount(account)) return;
     const openingBalance = !state.search && (account.openingDate || "2022-12-31") <= cutoffDate
       ? Number(account.openingBalance || 0)
       : 0;
@@ -1273,11 +1280,13 @@ function accountBalances(periodTransactions, balanceTransactions = periodTransac
     });
   });
   periodTransactions.forEach((tx) => {
+    if (!isDashboardBalanceTransaction(tx)) return;
     const row = totals.get(tx.account) || { amount: 0, count: 0 };
     row.count += 1;
     totals.set(tx.account, row);
   });
   balanceTransactions.forEach((tx) => {
+    if (!isDashboardBalanceTransaction(tx)) return;
     const row = totals.get(tx.account) || { amount: 0, count: 0 };
     row.amount += tx.amount;
     totals.set(tx.account, row);
@@ -1290,6 +1299,7 @@ function renderAccountBalances(periodTransactions, balanceTransactions = periodT
   const cutoffDate = `${cutoffMonth}-31`;
   state.data.accounts.forEach((account) => {
     if (state.account !== "all" && account.name !== state.account) return;
+    if (!isDashboardBalanceAccount(account)) return;
     const openingBalance = !state.search && (account.openingDate || "2022-12-31") <= cutoffDate
       ? Number(account.openingBalance || 0)
       : 0;
@@ -1299,11 +1309,13 @@ function renderAccountBalances(periodTransactions, balanceTransactions = periodT
     });
   });
   periodTransactions.forEach((tx) => {
+    if (!isDashboardBalanceTransaction(tx)) return;
     const row = totals.get(tx.account) || { amount: 0, count: 0 };
     row.count += 1;
     totals.set(tx.account, row);
   });
   balanceTransactions.forEach((tx) => {
+    if (!isDashboardBalanceTransaction(tx)) return;
     const row = totals.get(tx.account) || { amount: 0, count: 0 };
     row.amount += tx.amount;
     totals.set(tx.account, row);
@@ -1315,6 +1327,17 @@ function renderAccountBalances(periodTransactions, balanceTransactions = periodT
   $("#accountBalanceList").innerHTML = rows
     .map(([name, item]) => listRow(name, formatMoney(item.amount), Math.abs(item.amount) / max))
     .join("");
+}
+
+function isDashboardBalanceAccount(account) {
+  if (!account || account.active === false) return false;
+  const type = normalizeAccountType(account.type);
+  return type === "corrente" || type === "investimento";
+}
+
+function isDashboardBalanceTransaction(tx) {
+  const account = state.data.accounts.find((item) => item.name === tx.account);
+  return isDashboardBalanceAccount(account || { name: tx.account, type: tx.accountType, active: true });
 }
 
 function renderCategoryVolume(transactions) {
@@ -1364,13 +1387,30 @@ function dashboardCurrentExpenseMonth(transactions) {
 }
 
 function isIgnoredCategoryVolume(tx) {
-  return Number(tx.code) === 9997 || normalizedText(tx.category).includes("adiantamento");
+  return tx.macro === "investimento" || isTransitoryTransaction(tx) || isInvestmentAccountTransaction(tx);
 }
 
 function isIgnoredTrendExpense(tx) {
   const code = Number(tx.code);
   const category = normalizedText(tx.category);
   return code === 9997 || code === 9998 || category.includes("adiantamento") || category.includes("pagamento cartao");
+}
+
+function isTransitoryTransaction(tx) {
+  const code = Number(tx.code);
+  const category = normalizedText(tx.category);
+  const level1 = normalizedText(tx.level1);
+  return [9996, 9997, 9998, 9999].includes(code)
+    || level1.includes("transitor")
+    || category.includes("adiantamento")
+    || category.includes("pagamento cartao")
+    || category.includes("caixa de viagem")
+    || category.includes("transferencia entre contas");
+}
+
+function isInvestmentAccountTransaction(tx) {
+  const account = state.data.accounts.find((item) => item.name === tx.account);
+  return normalizeAccountType(tx.accountType || account?.type || "") === "investimento";
 }
 
 function txMonthHasExpense(transactions, month) {
@@ -1732,6 +1772,8 @@ function currentTransactionRows(kind) {
       accountKind: "card",
       type: state.cardType,
       paymentStatus: state.cardStatus,
+      dateStart: state.cardDateStart,
+      dateEnd: state.cardDateEnd,
     }), state.cardSort);
   }
   return sortTransactions(filteredTransactionsBy({
@@ -1740,6 +1782,8 @@ function currentTransactionRows(kind) {
     accountKind: "regular",
     type: state.transactionType,
     paymentStatus: state.transactionStatus,
+    dateStart: state.transactionDateStart,
+    dateEnd: state.transactionDateEnd,
   }), state.transactionSort);
 }
 
@@ -1898,16 +1942,16 @@ function renderCategories() {
         .map(
           (row) => `
             <tr class="category-row">
-              <td>${escapeHtml(row.name)}</td>
-              <td class="number">${row.code}</td>
-              <td>${escapeHtml(row.level1)}</td>
-              <td>${escapeHtml(row.level2)}</td>
-              <td>${escapeHtml(row.level3)}</td>
-              <td>${escapeHtml(row.level4)}</td>
-              <td><span class="pill ${row.macro}">${escapeHtml(row.macro)}</span></td>
+              <td class="cat-name">${escapeHtml(row.name)}</td>
+              <td class="number cat-code">${row.code}</td>
+              <td class="cat-level">${escapeHtml(row.level1)}</td>
+              <td class="cat-level">${escapeHtml(row.level2)}</td>
+              <td class="cat-level">${escapeHtml(row.level3)}</td>
+              <td class="cat-level">${escapeHtml(row.level4)}</td>
+              <td class="cat-type"><span class="pill ${row.macro}">${escapeHtml(row.macro)}</span></td>
               <td class="action-cell">
-                <button class="table-action" data-action="edit-category" data-code="${row.code}" type="button">Editar</button>
-                <button class="table-action danger" data-action="delete-category" data-code="${row.code}" type="button">Excluir</button>
+                <button class="table-action icon-only" data-action="edit-category" data-code="${row.code}" type="button" title="Editar" aria-label="Editar categoria"><span aria-hidden="true">&#9998;</span></button>
+                <button class="table-action icon-only danger" data-action="delete-category" data-code="${row.code}" type="button" title="Excluir" aria-label="Excluir categoria"><span aria-hidden="true">&#128465;</span></button>
               </td>
             </tr>
           `,
@@ -2440,6 +2484,26 @@ function bindEvents() {
     renderCards();
   });
 
+  $("#transactionDateStartFilter").addEventListener("change", (event) => {
+    state.transactionDateStart = event.target.value;
+    renderTransactions();
+  });
+
+  $("#transactionDateEndFilter").addEventListener("change", (event) => {
+    state.transactionDateEnd = event.target.value;
+    renderTransactions();
+  });
+
+  $("#cardDateStartFilter").addEventListener("change", (event) => {
+    state.cardDateStart = event.target.value;
+    renderCards();
+  });
+
+  $("#cardDateEndFilter").addEventListener("change", (event) => {
+    state.cardDateEnd = event.target.value;
+    renderCards();
+  });
+
   $("#transactionSortFilter").addEventListener("change", (event) => {
     state.transactionSort = event.target.value;
     renderTransactions();
@@ -2522,11 +2586,15 @@ function bindEvents() {
     state.search = "";
     state.transactionType = "all";
     state.transactionStatus = "all";
+    state.transactionDateStart = "";
+    state.transactionDateEnd = "";
     state.accountStatus = "all";
     state.cardAccount = "all";
     state.cardSearch = "";
     state.cardType = "all";
     state.cardStatus = "all";
+    state.cardDateStart = "";
+    state.cardDateEnd = "";
     state.transactionSort = "date_desc";
     state.cardSort = "date_desc";
     state.investmentDashboardYear = defaultInvestmentDashboardYear();
@@ -2541,6 +2609,10 @@ function bindEvents() {
     state.incomeType = "all";
     $("#searchInput").value = "";
     $("#cardSearchInput").value = "";
+    $("#transactionDateStartFilter").value = "";
+    $("#transactionDateEndFilter").value = "";
+    $("#cardDateStartFilter").value = "";
+    $("#cardDateEndFilter").value = "";
     $("#investmentSearchInput").value = "";
     $("#investmentAssetSearchInput").value = "";
     $("#incomeSearchInput").value = "";
@@ -2775,16 +2847,24 @@ function resetViewFilters(view) {
     state.search = "";
     state.transactionType = "all";
     state.transactionStatus = "all";
+    state.transactionDateStart = "";
+    state.transactionDateEnd = "";
     state.transactionSort = "date_desc";
     $("#searchInput").value = "";
+    $("#transactionDateStartFilter").value = "";
+    $("#transactionDateEndFilter").value = "";
   }
   if (view === "cards") {
     state.cardAccount = "all";
     state.cardSearch = "";
     state.cardType = "all";
     state.cardStatus = "all";
+    state.cardDateStart = "";
+    state.cardDateEnd = "";
     state.cardSort = "date_desc";
     $("#cardSearchInput").value = "";
+    $("#cardDateStartFilter").value = "";
+    $("#cardDateEndFilter").value = "";
   }
   if (view === "investments") {
     state.investmentSearch = "";

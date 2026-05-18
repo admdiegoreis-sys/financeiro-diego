@@ -763,12 +763,12 @@ function hydrateLocalData() {
   const savedInvestments = readStorage(storageKeys.investments);
   const investmentById = new Map(baseInvestments.map((item) => [item.id, item]));
   savedInvestments.forEach((item) => investmentById.set(item.id, item));
-  state.data.investments = [...investmentById.values()];
+  state.data.investments = [...investmentById.values()].map(normalizeInvestmentRecord);
   const baseIncomes = state.data.incomes || [];
   const savedIncomes = readStorage(storageKeys.incomes);
   const incomeById = new Map(baseIncomes.map((item) => [item.id, item]));
   savedIncomes.forEach((item) => incomeById.set(item.id, item));
-  state.data.incomes = [...incomeById.values()];
+  state.data.incomes = [...incomeById.values()].map(normalizeIncomeRecord);
   state.data.investmentAssets = buildInvestmentAssetBase();
   const savedInvestmentAssets = readStorage(storageKeys.investmentAssets);
   const assetByTicker = new Map(state.data.investmentAssets.map((item) => [item.ticker, item]));
@@ -913,22 +913,44 @@ function normalizeAccount(account) {
 function normalizeInvestmentAsset(asset) {
   return {
     ticker: String(asset.ticker || "").trim().toUpperCase(),
-    name: String(asset.name || asset.assetName || "").trim(),
+    name: cleanText(asset.name || asset.assetName || "").trim(),
     type: canonicalAssetType(asset.type || asset.assetType || "outro"),
     currency: String(asset.currency || "BRL").trim().toUpperCase(),
-    broker: String(asset.broker || "").trim(),
-    notes: String(asset.notes || "").trim(),
-    source: asset.source || "manual",
+    broker: cleanText(asset.broker || "").trim(),
+    notes: cleanText(asset.notes || "").trim(),
+    source: cleanText(asset.source || "manual"),
+  };
+}
+
+function normalizeInvestmentRecord(item) {
+  return {
+    ...item,
+    operation: cleanText(item.operation || "compra").toLowerCase(),
+    assetType: canonicalAssetType(item.assetType || item.type || "outro"),
+    ticker: String(item.ticker || "").trim().toUpperCase(),
+    assetName: cleanText(item.assetName || item.name || "").trim(),
+    broker: cleanText(item.broker || "").trim(),
+    notes: cleanText(item.notes || "").trim(),
+  };
+}
+
+function normalizeIncomeRecord(item) {
+  return {
+    ...item,
+    type: cleanText(item.type || "outro").toLowerCase(),
+    ticker: String(item.ticker || "").trim().toUpperCase(),
+    account: cleanText(item.account || "").trim(),
+    notes: cleanText(item.notes || "").trim(),
   };
 }
 
 function canonicalAssetType(value) {
-  const text = normalizedText(value);
+  const text = normalizedText(cleanText(value));
   if (text === "acao" || text === "acoes" || text === "stock" || text === "stocks") return "ação";
   if (text === "fii" || text.includes("imobili")) return "fii";
   if (text.includes("renda fixa") || text.includes("tesouro") || text.includes("cdb")) return "renda fixa";
   if (text.includes("fundo")) return "fundo";
-  return String(value || "outro").trim().toLowerCase() || "outro";
+  return cleanText(value || "outro").trim().toLowerCase() || "outro";
 }
 
 function buildInvestmentAssetBase() {
@@ -1915,9 +1937,9 @@ function transactionTableHtml(transactions) {
               <td class="tx-type"><span class="pill ${tx.macro}">${escapeHtml(tx.macro)}</span></td>
               ${amountCell(tx.amount, true)}
               <td class="action-cell">
-                <button class="table-action icon-only" data-action="edit-transaction" data-id="${escapeHtml(tx.id)}" type="button" title="Editar" aria-label="Editar lançamento"><span aria-hidden="true">&#9998;</span></button>
-                <button class="table-action icon-only" data-action="duplicate-transaction" data-id="${escapeHtml(tx.id)}" type="button" title="Duplicar" aria-label="Duplicar lançamento"><span aria-hidden="true">&#10697;</span></button>
-                <button class="table-action icon-only danger" data-action="delete-transaction" data-id="${escapeHtml(tx.id)}" type="button" title="Excluir" aria-label="Excluir lançamento"><span aria-hidden="true">&#128465;</span></button>
+                ${actionIcon("edit-transaction", `data-id="${escapeHtml(tx.id)}"`, "Editar lançamento", "&#9998;")}
+                ${actionIcon("duplicate-transaction", `data-id="${escapeHtml(tx.id)}"`, "Duplicar lançamento", "&#10697;")}
+                ${actionIcon("delete-transaction", `data-id="${escapeHtml(tx.id)}"`, "Excluir lançamento", "&#128465;", true)}
               </td>
             </tr>
           `,
@@ -2023,8 +2045,8 @@ function renderCategories() {
               <td class="cat-level">${escapeHtml(row.level4)}</td>
               <td class="cat-type"><span class="pill ${row.macro}">${escapeHtml(row.macro)}</span></td>
               <td class="action-cell">
-                <button class="table-action icon-only" data-action="edit-category" data-code="${row.code}" type="button" title="Editar" aria-label="Editar categoria"><span aria-hidden="true">&#9998;</span></button>
-                <button class="table-action icon-only danger" data-action="delete-category" data-code="${row.code}" type="button" title="Excluir" aria-label="Excluir categoria"><span aria-hidden="true">&#128465;</span></button>
+                ${actionIcon("edit-category", `data-code="${row.code}"`, "Editar categoria", "&#9998;")}
+                ${actionIcon("delete-category", `data-code="${row.code}"`, "Excluir categoria", "&#128465;", true)}
               </td>
             </tr>
           `,
@@ -2110,8 +2132,8 @@ function renderAccounts() {
           <td>${escapeHtml(formatDateShort(account.openingDate || "2022-12-31"))}</td>
           <td>${escapeHtml(account.source)}</td>
           <td class="action-cell">
-            <button class="table-action" data-action="edit-account" data-name="${escapeHtml(account.name)}" type="button">Editar</button>
-            <button class="table-action danger" data-action="delete-account" data-name="${escapeHtml(account.name)}" type="button">Excluir</button>
+            ${actionIcon("edit-account", `data-name="${escapeHtml(account.name)}"`, "Editar conta", "&#9998;")}
+            ${actionIcon("delete-account", `data-name="${escapeHtml(account.name)}"`, "Excluir conta", "&#128465;", true)}
           </td>
         </tr>
       `).join("")}
@@ -2176,17 +2198,17 @@ function investmentRow(item) {
     <tr>
       <td>${escapeHtml(formatDateShort(item.date))}</td>
       <td><span class="pill ${item.operation === "venda" ? "receita" : "investimento"}">${escapeHtml(titleCase(item.operation))}</span></td>
-      <td>${escapeHtml(titleCase(item.assetType))}</td>
+      <td>${escapeHtml(titleCase(cleanText(item.assetType)))}</td>
       <td><strong>${escapeHtml(item.ticker)}</strong></td>
-      <td>${escapeHtml(item.assetName || "-")}</td>
+      <td>${escapeHtml(cleanText(item.assetName || "-"))}</td>
       <td class="number">${formatQuantity(item.quantity || 0)}</td>
       ${amountCell(item.unitPrice || 0, true)}
       ${amountCell(item.fees || 0, true)}
       ${amountCell(total, true)}
-      <td>${escapeHtml(item.broker || "-")}</td>
+      <td>${escapeHtml(cleanText(item.broker || "-"))}</td>
       <td class="action-cell">
-        <button class="table-action" data-action="edit-investment" data-id="${escapeHtml(item.id)}" type="button">Editar</button>
-        <button class="table-action danger" data-action="delete-investment" data-id="${escapeHtml(item.id)}" type="button">Excluir</button>
+        ${actionIcon("edit-investment", `data-id="${escapeHtml(item.id)}"`, "Editar investimento", "&#9998;")}
+        ${actionIcon("delete-investment", `data-id="${escapeHtml(item.id)}"`, "Excluir investimento", "&#128465;", true)}
       </td>
     </tr>
   `;
@@ -2247,14 +2269,14 @@ function renderInvestmentAssets() {
       ${rows.length ? rows.map((item) => `
         <tr>
           <td><strong>${escapeHtml(item.ticker)}</strong></td>
-          <td><span class="pill investimento">${escapeHtml(titleCase(item.type))}</span></td>
-          <td>${escapeHtml(item.name || "-")}</td>
+          <td><span class="pill investimento">${escapeHtml(titleCase(cleanText(item.type)))}</span></td>
+          <td>${escapeHtml(cleanText(item.name || "-"))}</td>
           <td>${escapeHtml(item.currency || "BRL")}</td>
-          <td>${escapeHtml(item.broker || "-")}</td>
-          <td>${escapeHtml(item.source || "manual")}</td>
+          <td>${escapeHtml(cleanText(item.broker || "-"))}</td>
+          <td>${escapeHtml(cleanText(item.source || "manual"))}</td>
           <td class="action-cell">
-            <button class="table-action" data-action="edit-investment-asset" data-ticker="${escapeHtml(item.ticker)}" type="button">Editar</button>
-            <button class="table-action danger" data-action="delete-investment-asset" data-ticker="${escapeHtml(item.ticker)}" type="button">Excluir</button>
+            ${actionIcon("edit-investment-asset", `data-ticker="${escapeHtml(item.ticker)}"`, "Editar ticker", "&#9998;")}
+            ${actionIcon("delete-investment-asset", `data-ticker="${escapeHtml(item.ticker)}"`, "Excluir ticker", "&#128465;", true)}
           </td>
         </tr>
       `).join("") : `<tr><td colspan="7">Nenhum ticker cadastrado.</td></tr>`}
@@ -2266,15 +2288,15 @@ function incomeRow(item) {
   return `
     <tr>
       <td>${escapeHtml(formatDateShort(item.date))}</td>
-      <td><span class="pill receita">${escapeHtml(titleCase(item.type))}</span></td>
+      <td><span class="pill receita">${escapeHtml(titleCase(cleanText(item.type)))}</span></td>
       <td><strong>${escapeHtml(item.ticker)}</strong></td>
       ${amountCell(item.amount || 0, true)}
       <td class="number">${item.quantity ? formatQuantity(item.quantity) : "-"}</td>
-      <td>${escapeHtml(item.account || "-")}</td>
-      <td>${escapeHtml(item.notes || "-")}</td>
+      <td>${escapeHtml(cleanText(item.account || "-"))}</td>
+      <td>${escapeHtml(cleanText(item.notes || "-"))}</td>
       <td class="action-cell">
-        <button class="table-action" data-action="edit-income" data-id="${escapeHtml(item.id)}" type="button">Editar</button>
-        <button class="table-action danger" data-action="delete-income" data-id="${escapeHtml(item.id)}" type="button">Excluir</button>
+        ${actionIcon("edit-income", `data-id="${escapeHtml(item.id)}"`, "Editar provento", "&#9998;")}
+        ${actionIcon("delete-income", `data-id="${escapeHtml(item.id)}"`, "Excluir provento", "&#128465;", true)}
       </td>
     </tr>
   `;
@@ -2443,6 +2465,14 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function cleanText(value) {
+  return repairMojibake(value);
+}
+
+function actionIcon(action, attrs, title, symbol, danger = false) {
+  return `<button class="table-action icon-only${danger ? " danger" : ""}" data-action="${action}" ${attrs} type="button" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span aria-hidden="true">${symbol}</span></button>`;
 }
 
 function render() {

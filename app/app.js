@@ -2943,21 +2943,32 @@ function downloadTransactionTemplate(kind) {
     ["Descrição", "Conta", "Código Categoria", "Valor", "Competência", "Pagamento"],
     ["Ex.: Compra supermercado", account?.name || "", category?.code || "", "-150,00", "05/05/2026", ""],
   ];
-  const htmlRows = rows
-    .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`)
-    .join("");
-  downloadHtmlXls(htmlRows, isCard ? "modelo_cartao_credito.xls" : "modelo_lancamentos.xls");
+  downloadWorkbookTemplate(rows, isCard ? "modelo_cartao_credito.xlsx" : "modelo_lancamentos.xlsx");
 }
 
 function downloadSimpleTemplate(kind, rows) {
-  const htmlRows = rows
-    .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`)
-    .join("");
   const fileNames = {
-    investments: "modelo_investimentos.xls",
-    income: "modelo_proventos.xls",
+    investments: "modelo_investimentos.xlsx",
+    income: "modelo_proventos.xlsx",
   };
-  downloadHtmlXls(htmlRows, fileNames[kind] || "modelo_importacao.xls");
+  downloadWorkbookTemplate(rows, fileNames[kind] || "modelo_importacao.xlsx");
+}
+
+function downloadWorkbookTemplate(rows, fileName) {
+  if (!window.XLSX) {
+    const htmlRows = rows
+      .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`)
+      .join("");
+    downloadHtmlXls(htmlRows, fileName.replace(/\.xlsx$/i, ".xls"));
+    return;
+  }
+  const worksheet = window.XLSX.utils.aoa_to_sheet(rows);
+  worksheet["!cols"] = rows[0].map((_, index) => ({
+    wch: Math.max(14, ...rows.map((row) => String(row[index] || "").length + 2)),
+  }));
+  const workbook = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(workbook, worksheet, "Modelo");
+  window.XLSX.writeFile(workbook, fileName);
 }
 
 function downloadHtmlXls(htmlRows, fileName) {
@@ -3031,10 +3042,34 @@ function parseImportTable(text) {
 }
 
 function parseExcelWorkbook(buffer) {
-  const rows = parseXlsxWorkbook(buffer);
+  const rows = tryParseXlsxWorkbook(buffer);
   if (rows.length) return rows;
   const text = new TextDecoder("utf-8").decode(buffer);
+  if (isExcelExternalSheetHtml(text)) {
+    throw new Error("Este arquivo XLS foi salvo pelo Excel com abas externas (_arquivos/sheet001.htm). Baixe novamente o Modelo XLSX no app, preencha esse arquivo .xlsx e importe sem salvar como XLS antigo.");
+  }
   return parseImportTable(text);
+}
+
+function tryParseXlsxWorkbook(buffer) {
+  try {
+    return parseXlsxWorkbook(buffer);
+  } catch (error) {
+    const text = new TextDecoder("utf-8").decode(buffer);
+    if (isLikelyTextWorkbook(text)) return [];
+    throw error;
+  }
+}
+
+function isLikelyTextWorkbook(text) {
+  return /^\s*</.test(text) || text.includes(";") || text.includes("\t") || text.includes(",");
+}
+
+function isExcelExternalSheetHtml(text) {
+  return /<frameset[\s>]/i.test(text)
+    || /<frame[^>]+src=/i.test(text)
+    || /_arquivos\/sheet\d+\.htm/i.test(text)
+    || /files\/sheet\d+\.htm/i.test(text);
 }
 
 function parseXlsxWorkbook(buffer) {
